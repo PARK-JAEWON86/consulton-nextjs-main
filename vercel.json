@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/settlements/run?month=auto&dryRun=true",
+      "schedule": "0 9 1 * *"
+    },
+    {
+      "path": "/api/settlements/run?month=auto",
+      "schedule": "0 9 5 * *"
+    }
+  ],
+  "env": {
+    "KST_TZ": "Asia/Seoul",
+    "SETTLEMENT_DAY": "5",
+    "WITHHOLD_3_3": "true",
+    "PLATFORM_FEE_BP": "1200",
+    "PG_FEE_BP": "200",
+    "INFRA_COST_PER_MIN": "6.35"
+  }
+}
