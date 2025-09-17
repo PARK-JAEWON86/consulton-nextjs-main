@@ -12,29 +12,30 @@ export interface ExpertStats {
 }
 
 /**
- * 공식 랭킹 점수 계산 함수 (3자리 점수 체계)
+ * 개선된 랭킹 점수 계산 함수 (2자리 점수 체계, 0-100점)
  * @param stats 전문가 통계 데이터
- * @returns 계산된 랭킹 점수 (0-1000점)
+ * @returns 계산된 랭킹 점수 (0-100점)
  */
 export const calculateRankingScore = (stats: ExpertStats): number => {
-  // 1. 상담 횟수 (40% 가중치) - 3자리 점수 체계에 맞게 조정
-  const sessionScore = Math.min((stats.totalSessions || 0) / 100, 1) * 400; // 100회당 400점
-  
-  // 2. 평점 (30% 가중치) - 3자리 점수 체계에 맞게 조정
-  const ratingScore = ((stats.avgRating || 0) / 5) * 300; // 5점 만점에서 300점
-  
-  // 3. 리뷰 수 (15% 가중치) - 3자리 점수 체계에 맞게 조정
-  const reviewScore = Math.min((stats.reviewCount || 0) / 50, 1) * 150; // 50개당 150점
-  
-  // 4. 재방문 고객 비율 (10% 가중치) - 3자리 점수 체계에 맞게 조정
+  // 1. 상담 횟수 (25% 가중치) - 경험 중시하되 비율 낮춤
+  const sessionScore = Math.min((stats.totalSessions || 0) / 200, 1) * 25; // 200회당 25점
+
+  // 2. 평점 (35% 가중치) - 서비스 품질 가장 중요
+  const ratingScore = ((stats.avgRating || 0) / 5) * 35; // 5점 만점에서 35점
+
+  // 3. 리뷰 수 (15% 가중치) - 신뢰도 지표
+  const reviewScore = Math.min((stats.reviewCount || 0) / 100, 1) * 15; // 100개당 15점
+
+  // 4. 재방문 고객 비율 (20% 가중치) - 만족도 핵심 지표
   const totalSessions = stats.totalSessions || 0;
   const repeatRate = totalSessions > 0 ? (stats.repeatClients || 0) / totalSessions : 0;
-  const repeatScore = repeatRate * 100; // 100% 재방문시 100점
-  
-  // 5. 좋아요 수 (5% 가중치) - 3자리 점수 체계에 맞게 조정
-  const likeScore = Math.min((stats.likeCount || 0) / 100, 1) * 50; // 100개당 50점
-  
-  return Math.round((sessionScore + ratingScore + reviewScore + repeatScore + likeScore) * 100) / 100;
+  const repeatScore = repeatRate * 20; // 100% 재방문시 20점
+
+  // 5. 좋아요 수 (5% 가중치) - 보조 지표
+  const likeScore = Math.min((stats.likeCount || 0) / 200, 1) * 5; // 200개당 5점
+
+  const totalScore = sessionScore + ratingScore + reviewScore + repeatScore + likeScore;
+  return Math.round(totalScore * 100) / 100;
 };
 
 /**
@@ -43,16 +44,16 @@ export const calculateRankingScore = (stats: ExpertStats): number => {
  * @returns 점수 분석 결과
  */
 export const getRankingScoreBreakdown = (stats: ExpertStats) => {
-  const sessionScore = Math.min((stats.totalSessions || 0) / 100, 1) * 400;
-  const ratingScore = ((stats.avgRating || 0) / 5) * 300;
-  const reviewScore = Math.min((stats.reviewCount || 0) / 50, 1) * 150;
+  const sessionScore = Math.min((stats.totalSessions || 0) / 200, 1) * 25;
+  const ratingScore = ((stats.avgRating || 0) / 5) * 35;
+  const reviewScore = Math.min((stats.reviewCount || 0) / 100, 1) * 15;
   const totalSessions = stats.totalSessions || 0;
   const repeatRate = totalSessions > 0 ? (stats.repeatClients || 0) / totalSessions : 0;
-  const repeatScore = repeatRate * 100;
-  const likeScore = Math.min((stats.likeCount || 0) / 100, 1) * 50;
-  
+  const repeatScore = repeatRate * 20;
+  const likeScore = Math.min((stats.likeCount || 0) / 200, 1) * 5;
+
   const totalScore = sessionScore + ratingScore + reviewScore + repeatScore + likeScore;
-  
+
   return {
     sessionScore: Math.round(sessionScore * 100) / 100,
     ratingScore: Math.round(ratingScore * 100) / 100,
@@ -61,11 +62,11 @@ export const getRankingScoreBreakdown = (stats: ExpertStats) => {
     likeScore: Math.round(likeScore * 100) / 100,
     totalScore: Math.round(totalScore * 100) / 100,
     breakdown: {
-      sessions: `${stats.totalSessions || 0}회 → ${Math.round(sessionScore * 100) / 100}점`,
-      rating: `${stats.avgRating || 0}점 → ${Math.round(ratingScore * 100) / 100}점`,
-      reviews: `${stats.reviewCount || 0}개 → ${Math.round(reviewScore * 100) / 100}점`,
-      repeat: `${Math.round(repeatRate * 100)}% → ${Math.round(repeatScore * 100) / 100}점`,
-      likes: `${stats.likeCount || 0}개 → ${Math.round(likeScore * 100) / 100}점`
+      sessions: `${stats.totalSessions || 0}회 → ${Math.round(sessionScore * 100) / 100}점 (25%)`,
+      rating: `${stats.avgRating || 0}점 → ${Math.round(ratingScore * 100) / 100}점 (35%)`,
+      reviews: `${stats.reviewCount || 0}개 → ${Math.round(reviewScore * 100) / 100}점 (15%)`,
+      repeat: `${Math.round(repeatRate * 100)}% → ${Math.round(repeatScore * 100) / 100}점 (20%)`,
+      likes: `${stats.likeCount || 0}개 → ${Math.round(likeScore * 100) / 100}점 (5%)`
     }
   };
 };

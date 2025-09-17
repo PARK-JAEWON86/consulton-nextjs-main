@@ -41,7 +41,6 @@ const getExpertLevelPricing = async (expertId: number, totalSessions: number = 0
   }
 };
 
-import { calculateCreditsByLevel } from "@/utils/expertLevels";
 
 interface ExpertCardProps {
   expert: ExpertProfile | any;
@@ -203,8 +202,8 @@ export default function ExpertCard({
     loadPricingInfo();
   }, [expert.id, expert.totalSessions, expert.avgRating]);
 
-  // 요금 정보가 로딩 중이거나 없을 때 기본값 사용 (레벨은 실시간 계산됨)
-  const creditsPerMinute = pricingInfo?.creditsPerMinute || calculateCreditsByLevel(1); // 기본값 사용
+  // 요금 정보가 로딩 중이거나 없을 때 기본값 사용
+  const creditsPerMinute = pricingInfo?.creditsPerMinute || 100; // 기본값: 신예 티어
   const tierName = pricingInfo?.tierName || "Tier 1 (Lv.1-99)";
 
   const handleProfileView = () => {

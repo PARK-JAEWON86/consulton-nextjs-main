@@ -22,7 +22,8 @@ import {
 } from "lucide-react";
 // import { dummyExperts, convertExpertItemToProfile } from "@/data/dummy/experts"; // 더미 데이터 제거
 // import { dummyReviews, getReviewsByExpert } from "@/data/dummy/reviews"; // 더미 데이터 제거
-import { ExpertProfile, Review } from "@/types";
+import { ExpertProfile, Review, ConsultationType } from "@/types";
+import ConsultationRequestModal, { ConsultationRequestData } from "@/components/consultation/ConsultationRequestModal";
 // API를 통해 전문가 레벨 관련 정보를 가져오는 함수들
 const calculateExpertLevel = async (totalSessions: number = 0, avgRating: number = 0) => {
   try {
@@ -121,6 +122,7 @@ export default function ExpertProfilePage() {
 
   // 랭킹 탭 상태
   const [activeRankingTab, setActiveRankingTab] = useState<'overall' | 'specialty'>('overall');
+
   
   // 랭킹 목록 상태
   const [rankingList, setRankingList] = useState<Array<{
@@ -136,6 +138,9 @@ export default function ExpertProfilePage() {
   
   // 좋아요 상태
   const [isLiked, setIsLiked] = useState(false);
+
+  // 상담 신청 모달 상태
+  const [isConsultationModalOpen, setIsConsultationModalOpen] = useState(false);
   
   // 좋아요 상태를 로컬 스토리지에서 불러오는 함수
   const loadLikeState = (expertId: number) => {
@@ -194,6 +199,7 @@ export default function ExpertProfilePage() {
       loadRankingList('overall');
     }
   }, [expert, expertStats]);
+
   
   // 리뷰 페이징 상태
   const [currentReviewPage, setCurrentReviewPage] = useState(1);
@@ -219,8 +225,8 @@ export default function ExpertProfilePage() {
             specialtyAreas: apiProfile.keywords || [],
             consultationTypes: apiProfile.consultationTypes || [],
             languages: apiProfile.languages || ['한국어'],
-            hourlyRate: 0,
-            pricePerMinute: 0,
+            hourlyRate: apiProfile.hourlyRate || 0,
+            pricePerMinute: Math.ceil((apiProfile.hourlyRate || 0) / 60),
             totalSessions: apiProfile.totalSessions || 0,
             avgRating: apiProfile.rating || 4.5,
             rating: apiProfile.rating || 4.5,
@@ -542,10 +548,14 @@ export default function ExpertProfilePage() {
                 website: undefined,
                 publications: []
               },
-              pricingTiers: [
-                { duration: 30, price: 25000, description: '기본 상담' },
-                { duration: 60, price: 45000, description: '상세 상담' },
-                { duration: 90, price: 65000, description: '종합 상담' }
+              pricingTiers: apiProfile.hourlyRate ? [
+                { duration: 30, price: Math.round(apiProfile.hourlyRate * 0.5), description: '기본 상담' },
+                { duration: 60, price: Math.round(apiProfile.hourlyRate), description: '상세 상담' },
+                { duration: 90, price: Math.round(apiProfile.hourlyRate * 1.5), description: '종합 상담' }
+              ] : [
+                { duration: 30, price: 150, description: '기본 상담' },
+                { duration: 60, price: 300, description: '상세 상담' },
+                { duration: 90, price: 450, description: '종합 상담' }
               ],
               reschedulePolicy: '12시간 전 일정 변경 가능'
             };
@@ -730,8 +740,32 @@ export default function ExpertProfilePage() {
   }
 
   const handleConsultationRequest = () => {
-    // 상담 신청 로직 (추후 구현)
-    alert('상담 신청 기능은 준비 중입니다.');
+    setIsConsultationModalOpen(true);
+  };
+
+  // 상담 신청 제출 처리
+  const handleConsultationSubmit = async (data: ConsultationRequestData) => {
+    try {
+      console.log('상담 신청 데이터:', data);
+
+      const response = await fetch('/api/consultations/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, expertId: expert?.id })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        alert('상담 신청이 완료되었습니다. 전문가가 24시간 내에 연락드릴 예정입니다.');
+        setIsConsultationModalOpen(false);
+      } else {
+        throw new Error(result.message || '상담 신청에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('상담 신청 오류:', error);
+      alert(error instanceof Error ? error.message : '상담 신청 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
   };
 
   // 좋아요 토글 처리
@@ -1416,21 +1450,18 @@ export default function ExpertProfilePage() {
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100 p-6">
               <div className="mb-4">
                 {(() => {
-                  // 공식 랭킹 점수 기반 레벨 사용 (실시간 계산)
-                  const actualLevel = 1; // 기본값 (실제로는 API에서 계산된 레벨 사용)
-                  
-                  // 기본 크레딧 요금 (실제로는 API에서 가져와야 함)
-                  const baseCreditsPerMinute = Math.max(100, actualLevel * 0.5);
-                  
+                  // expert 데이터에서 직접 가격 정보 사용
+                  const baseCreditsPerMinute = expert.pricePerMinute || 50;
+
                   return (
                     <>
                       <p className="text-xs text-blue-700 mb-1">
-                        Lv.{actualLevel} 레벨 요금
+                        전문가 상담 요금
                       </p>
                       <div className="text-3xl font-bold text-blue-900 mb-1">
                         {baseCreditsPerMinute}크레딧<span className="text-lg font-normal text-blue-600">/분</span>
                       </div>
-                      <p className="text-sm text-blue-600">평균 세션 시간: {expert.averageSessionDuration}분 ({baseCreditsPerMinute * expert.averageSessionDuration}크레딧)</p>
+                      <p className="text-sm text-blue-600">평균 세션 시간: {expert.averageSessionDuration}분 ({Math.round(baseCreditsPerMinute * expert.averageSessionDuration).toLocaleString()}크레딧)</p>
                     </>
                   );
                 })()}
@@ -1470,128 +1501,205 @@ export default function ExpertProfilePage() {
             </div>
 
 
-
             {/* 전문가 랭킹 */}
             {expertStats && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
-                  <Crown className="h-5 w-5 text-yellow-500 mr-2" />
-                  전문가 랭킹
-                </h3>
-                
-                {/* 랭킹 탭 */}
-                <div className="flex space-x-1 mb-4 bg-gray-100 rounded-lg p-1">
-                  <button
-                    onClick={() => {
-                      setActiveRankingTab('overall');
-                      loadRankingList('overall');
-                    }}
-                    className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                      activeRankingTab === 'overall'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    전체 랭킹
-                  </button>
-                  <button
-                    onClick={() => {
-                      setActiveRankingTab('specialty');
-                      loadRankingList('specialty', expert?.specialty);
-                    }}
-                    className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                      activeRankingTab === 'specialty'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    분야별 랭킹
-                  </button>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                {/* 헤더 */}
+                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-b border-yellow-100 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-gray-900 flex items-center">
+                      <Crown className="h-5 w-5 text-yellow-500 mr-2" />
+                      전문가 랭킹
+                    </h3>
+                    <div className="text-xs text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">
+                      실시간 업데이트
+                    </div>
+                  </div>
+
+                  {/* 현재 전문가의 랭킹 정보 */}
+                  <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-yellow-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-bold text-white">
+                            {expert.name.charAt(0)}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900 text-sm">{expert.name}</div>
+                          <div className="text-xs text-gray-500">{expert.specialty}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center space-x-2">
+                          <div className="text-lg font-bold text-yellow-600">
+                            #{expertStats.ranking || '?'}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            /{expertStats.totalExperts || '?'}
+                          </div>
+                        </div>
+                        <div className="text-xs text-blue-600 font-medium">
+                          {Number(expertStats.rankingScore || 0).toFixed(1)}점
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
+                <div className="p-4">
+                  {/* 랭킹 탭 */}
+                  <div className="flex space-x-1 mb-4 bg-gray-100 rounded-lg p-1">
+                    <button
+                      onClick={() => {
+                        setActiveRankingTab('overall');
+                        loadRankingList('overall');
+                      }}
+                      className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
+                        activeRankingTab === 'overall'
+                          ? 'bg-white text-blue-600 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      전체 랭킹
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveRankingTab('specialty');
+                        loadRankingList('specialty', expert?.specialty);
+                      }}
+                      className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
+                        activeRankingTab === 'specialty'
+                          ? 'bg-white text-blue-600 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      {expert?.specialty} 랭킹
+                    </button>
+                  </div>
 
-
-                {/* 랭킹 목록 */}
-                <div className="mt-4">
-                  <div className="space-y-0.5 max-h-80 overflow-y-auto">
+                  {/* 랭킹 목록 */}
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
                     {rankingList.length > 0 ? (
                       <>
-                        {/* 상위 5위까지만 표시 */}
-                        {rankingList.slice(0, 5).map((item, index) => {
-                          // 공식 랭킹 점수 기반 레벨 사용 (기본값 1)
+                        {/* 상위 10위까지 표시 */}
+                        {rankingList.slice(0, 10).map((item, index) => {
                           const actualLevel = (item as any).level || 1;
-                          
+                          const isCurrentExpert = item.expertId === expert.id.toString();
+
                           return (
                             <div
                               key={item.expertId}
-                              className={`flex items-center justify-between py-1.5 px-2 rounded-md text-xs ${
-                                item.expertId === expert.id.toString()
-                                  ? 'bg-blue-50 border border-blue-200'
-                                  : 'bg-gray-50 hover:bg-gray-100'
+                              className={`relative flex items-center justify-between p-3 rounded-lg text-sm transition-all hover:shadow-sm cursor-pointer ${
+                                isCurrentExpert
+                                  ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-sm'
+                                  : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
                               }`}
+                              onClick={() => {
+                                if (!isCurrentExpert && item.expertId) {
+                                  router.push(`/experts/${item.expertId}`);
+                                }
+                              }}
                             >
-                              <div className="flex items-center space-x-2 flex-1">
-                                {/* 순위 */}
-                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                                  index < 3 
-                                    ? 'bg-yellow-500 text-white' 
-                                    : 'bg-orange-500 text-white'
+
+                              <div className="flex items-center space-x-3 flex-1">
+                                {/* 순위 배지 */}
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
+                                  index === 0
+                                    ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-lg'
+                                    : index === 1
+                                    ? 'bg-gradient-to-r from-gray-300 to-gray-400 text-white shadow-md'
+                                    : index === 2
+                                    ? 'bg-gradient-to-r from-orange-300 to-orange-400 text-white shadow-md'
+                                    : isCurrentExpert
+                                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                                    : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white'
                                 }`}>
                                   {index + 1}
                                 </div>
-                                
-                                {/* 전문가 이름 (레벨) */}
+
+                                {/* 전문가 정보 */}
                                 <div className="flex-1 min-w-0">
-                                  <div className="font-medium text-gray-900 truncate">
-                                    {item.expertName || `전문가 ${item.expertId}`}
-                                    {item.specialty && (
-                                      <span className="text-gray-500 font-normal ml-1">
-                                        ({item.specialty})
-                                      </span>
-                                    )}
+                                  <div className="flex items-center space-x-2">
+                                    <div className={`font-medium truncate ${
+                                      isCurrentExpert ? 'text-blue-900' : 'text-gray-900'
+                                    }`}>
+                                      {item.expertName || `전문가 ${item.expertId}`}
+                                    </div>
+                                    <div className={`text-xs px-2 py-0.5 rounded-full ${
+                                      isCurrentExpert
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'bg-gray-100 text-gray-600'
+                                    }`}>
+                                      Lv.{actualLevel}
+                                    </div>
                                   </div>
-                                  <div className="text-xs text-gray-500">
-                                    Lv.{actualLevel}
-                                  </div>
+                                  {activeRankingTab === 'overall' && item.specialty && (
+                                    <div className="text-xs text-gray-500 truncate">
+                                      {item.specialty}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
-                              
-                              {/* 상담횟수 - 점수 */}
-                              <div className="text-right flex-shrink-0 ml-2">
-                                <div className="text-xs text-gray-600 font-medium">
-                                  {item.totalSessions}회
+
+                              {/* 통계 정보 */}
+                              <div className="text-right flex-shrink-0 space-y-1">
+                                <div className="flex items-center space-x-3 text-xs">
+                                  <div className="text-gray-600">
+                                    <span className="font-medium">{item.totalSessions}</span>회
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                                    <span className="font-medium text-gray-900">
+                                      {Number(item.avgRating || 0).toFixed(1)}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="text-xs text-blue-600 font-bold">
+                                <div className={`text-xs font-bold ${
+                                  isCurrentExpert ? 'text-blue-600' : 'text-orange-600'
+                                }`}>
                                   {Number(item.rankingScore || 0).toFixed(1)}점
                                 </div>
                               </div>
                             </div>
                           );
                         })}
-                        
+
                         {/* 전체 랭킹 보러가기 버튼 */}
-                        {rankingList.length > 5 && (
-                          <div className="pt-2 border-t border-gray-200">
+                        {rankingList.length > 10 && (
+                          <div className="pt-3 border-t border-gray-200 mt-4">
                             <button
                               onClick={() => router.push('/experts/rankings')}
-                              className="w-full py-2 px-3 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors border border-blue-200"
+                              className="w-full py-3 px-4 text-sm font-medium text-blue-600 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-lg transition-all border border-blue-200 hover:border-blue-300 flex items-center justify-center space-x-2"
                             >
-                              전체 랭킹 보러가기 ({rankingList.length}명)
+                              <Crown className="w-4 h-4" />
+                              <span>전체 랭킹 보기 ({rankingList.length}명)</span>
                             </button>
                           </div>
                         )}
                       </>
                     ) : (
-                      <div className="text-center text-gray-500 text-sm py-4">
-                        {rankingList.length === 0 ? '랭킹 정보를 불러오는 중...' : '랭킹 데이터가 없습니다.'}
+                      <div className="text-center text-gray-500 py-8">
+                        <Crown className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                        <div className="text-sm">랭킹 정보를 불러오는 중...</div>
                       </div>
                     )}
                   </div>
-                  
+
                   {/* 랭킹 정보 요약 */}
                   {rankingList.length > 0 && (
-                    <div className="mt-3 text-center text-xs text-gray-500">
-                      총 {activeRankingTab === 'overall' ? (expertStats?.totalExperts || rankingList.length) : rankingList.length}명의 전문가 중 {activeRankingTab === 'overall' ? '전체' : expert?.specialty} 랭킹
+                    <div className="mt-4 pt-3 border-t border-gray-200">
+                      <div className="text-center text-xs text-gray-500 bg-gray-50 p-2 rounded-md">
+                        <div className="flex items-center justify-center space-x-1">
+                          <Users className="w-3 h-3" />
+                          <span>
+                            {activeRankingTab === 'overall'
+                              ? `전체 ${expertStats?.totalExperts || rankingList.length}명 중 ${activeRankingTab === 'overall' ? '전체' : expert?.specialty} 랭킹`
+                              : `${expert?.specialty} 분야 ${rankingList.length}명 중 랭킹`
+                            }
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1633,6 +1741,18 @@ export default function ExpertProfilePage() {
           </div>
         )}
       </div>
+
+      {/* 상담 신청 모달 */}
+      {expert && (
+        <ConsultationRequestModal
+          isOpen={isConsultationModalOpen}
+          onClose={() => setIsConsultationModalOpen(false)}
+          expertName={expert.name}
+          expertSpecialty={expert.specialty}
+          expertConsultationTypes={expert.consultationTypes}
+          onSubmit={handleConsultationSubmit}
+        />
+      )}
     </div>
   );
 }

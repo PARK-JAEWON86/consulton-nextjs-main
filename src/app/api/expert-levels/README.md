@@ -107,19 +107,22 @@ const calculatedExperts = await fetch('/api/expert-levels', {
 
 ## 클라이언트 사용법
 
-### 유틸리티 함수 사용
+### API 호출 함수 사용
 
 ```typescript
-import { 
-  calculateCreditsByLevel, 
-  getTierInfo, 
-  getAllLevels 
-} from '@/utils/expertLevels';
+// API를 통한 크레딧 계산
+const calculateCredits = async (level: number) => {
+  const response = await fetch(`/api/expert-levels?action=calculateCreditsByLevel&level=${level}`);
+  const data = await response.json();
+  return data.creditsPerMinute;
+};
 
-// 비동기 함수로 사용
-const credits = await calculateCreditsByLevel(500);
-const tierInfo = await getTierInfo(300);
-const allLevels = await getAllLevels();
+// API를 통한 티어 정보 조회
+const getTierInfo = async (level: number) => {
+  const response = await fetch(`/api/expert-levels?action=getTierInfo&level=${level}`);
+  const data = await response.json();
+  return data.tierInfo;
+};
 ```
 
 ### 직접 API 호출
@@ -153,6 +156,8 @@ API 호출 시 오류가 발생하면 다음과 같은 응답을 받습니다:
 
 HTTP 상태 코드는 500으로 반환됩니다.
 
-## 호환성
+## 성능 고려사항
 
-기존 `expertLevels.ts` 유틸리티 함수들과의 호환성을 위해 동기 함수 버전도 제공합니다. 하지만 새로운 기능을 사용하려면 비동기 API 함수를 사용하는 것을 권장합니다.
+- API 호출은 비동기적으로 처리됩니다
+- 자주 사용되는 데이터는 클라이언트에서 캐싱하는 것을 권장합니다
+- 일괄 처리가 필요한 경우 POST 요청을 사용하세요

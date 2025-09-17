@@ -89,6 +89,7 @@ export default function ExpertProfilePage() {
   });
   const [currentExpertId, setCurrentExpertId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true); // 인증 로딩 상태 별도 관리
   const expertProfileRef = useRef<any>(null);
   
   // 앱 상태 로드
@@ -106,7 +107,7 @@ export default function ExpertProfilePage() {
       } catch (error) {
         console.error('앱 상태 로드 실패:', error);
       } finally {
-        setIsLoading(false);
+        setIsAuthLoading(false); // 인증 로딩 완료
       }
     };
 
@@ -114,7 +115,65 @@ export default function ExpertProfilePage() {
   }, []);
 
   const { user } = appState;
-  
+
+  // 스켈레톤 UI 컴포넌트 (컴포넌트 최상단으로 이동)
+  const SkeletonLoader = () => (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <div className="h-8 bg-gray-200 rounded w-48 mb-2 animate-pulse"></div>
+            <div className="h-4 bg-gray-200 rounded w-64 animate-pulse"></div>
+          </div>
+          <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* 메인 컨텐츠 스켈레톤 */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* 기본 정보 카드 */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-start space-x-6">
+                <div className="w-36 h-48 bg-gray-200 rounded-lg animate-pulse"></div>
+                <div className="flex-1 space-y-4">
+                  <div className="h-6 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-2/3 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+
+            {/* 상세 정보 카드들 */}
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="h-6 bg-gray-200 rounded w-1/4 mb-4 animate-pulse"></div>
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-5/6 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-4/6 animate-pulse"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 사이드바 스켈레톤 */}
+          <div className="space-y-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="h-6 bg-gray-200 rounded w-1/3 mb-4 animate-pulse"></div>
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   // 기본적으로는 보기 모드로 시작 (편집 모드 자동 시작 제거)
   // useEffect(() => {
   //   if (initialData && !initialData.isProfileComplete) {
@@ -131,8 +190,16 @@ export default function ExpertProfilePage() {
   // } = useExpertProfileStore();
 
   useEffect(() => {
-    // 로그인한 사용자가 없으면 리턴
-    if (!user) {
+    // 인증이 아직 로딩 중이면 대기
+    if (isAuthLoading) {
+      return;
+    }
+
+    // 인증 로딩이 완료되었는데 사용자가 없으면 리다이렉트
+    if (!user || !appState.isAuthenticated) {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth/login?redirect=' + encodeURIComponent(window.location.pathname);
+      }
       return;
     }
     
@@ -165,8 +232,35 @@ export default function ExpertProfilePage() {
     //       
     //       const expertProfile = latestProfile || user.expertProfile;
     
-    // 임시로 기존 로직 사용
-    const expertProfile = user.expertProfile;
+    // 실제 API에서 최신 데이터 가져오기
+    let expertProfile = user.expertProfile;
+
+    const loadExpertProfile = async () => {
+      if (expertId) {
+        try {
+          console.log(`🔄 전문가 프로필 API 호출: ID=${expertId}`);
+          const response = await fetch(`/api/expert-profiles/${expertId}`);
+          if (response.ok) {
+            const apiResult = await response.json();
+            if (apiResult.success) {
+              console.log('✅ API 데이터 로드 성공:', apiResult.data);
+              expertProfile = apiResult.data;
+            } else {
+              console.warn('⚠️ API 응답 실패:', apiResult.error);
+            }
+          } else {
+            console.warn('⚠️ API 호출 실패:', response.status);
+          }
+        } catch (error) {
+          console.error('❌ API 호출 에러:', error);
+        }
+      }
+
+      // 데이터 처리 계속
+      processExpertProfile();
+    };
+
+    const processExpertProfile = () => {
     
     // 전문가 프로필이 없으면 기본 프로필 생성
     if (!expertProfile) {
@@ -239,10 +333,10 @@ export default function ExpertProfilePage() {
     }
 
     const convertedData = {
-      name: user.name || expertProfile.name || "",
+      name: user.name || expertProfile.fullName || expertProfile.name || "",
       specialty: expertProfile.specialty || "",
-      experience: expertProfile.experience || 0,
-      description: expertProfile.description || "",
+      experience: expertProfile.experienceYears || expertProfile.experience || 0,
+      description: expertProfile.bio || expertProfile.description || "",
       education: expertProfile.education || [""],
       certifications: expertProfile.certifications || [{ name: "", issuer: "" }],
       specialties: expertProfile.specialties || [expertProfile.specialty || ""],
@@ -253,7 +347,7 @@ export default function ExpertProfilePage() {
       totalSessions: expertProfile.totalSessions || 0,
       avgRating: expertProfile.avgRating || expertProfile.rating || 0,
       level: expertProfile.level || user.expertLevel || "",
-      completionRate: expertProfile.completionRate || 95,
+      completionRate: expertProfile.completionRate || 85,
       repeatClients: expertProfile.repeatClients || Math.floor((expertProfile.totalSessions || 0) * 0.3),
       responseTime: expertProfile.responseTime || '2시간 내',
       averageSessionDuration: expertProfile.averageSessionDuration || 60,
@@ -293,19 +387,27 @@ export default function ExpertProfilePage() {
       lastActiveAt: expertProfile.lastActiveAt || new Date(),
       joinedAt: expertProfile.joinedAt || new Date(),
       reschedulePolicy: expertProfile.reschedulePolicy || "12시간 전 일정 변경 가능",
-      pricingTiers: expertProfile.pricingTiers || [
-        { duration: 30, price: 25000, description: "기본 상담" },
-        { duration: 60, price: 45000, description: "상세 상담" },
-        { duration: 90, price: 65000, description: "종합 상담" }
-      ],
+      pricingTiers: expertProfile.pricingTiers || (expertProfile.hourlyRate ? [
+        { duration: 30, price: Math.round(expertProfile.hourlyRate * 0.5), description: "기본 상담" },
+        { duration: 60, price: expertProfile.hourlyRate, description: "상세 상담" },
+        { duration: 90, price: Math.round(expertProfile.hourlyRate * 1.5), description: "종합 상담" }
+      ] : [
+        { duration: 30, price: 15000, description: "기본 상담" },
+        { duration: 60, price: 30000, description: "상세 상담" },
+        { duration: 90, price: 45000, description: "종합 상담" }
+      ]),
       targetAudience: expertProfile.targetAudience || ["성인", "직장인", "학생"],
       isProfileComplete: expertProfile?.isProfileComplete === true,
     };
     setInitialData(convertedData);
     setIsLoading(false); // 데이터 로딩 완료
-  }, [user]);
+    };
 
-  const handleSave = (
+    // 초기화 함수 호출
+    loadExpertProfile();
+  }, [user, isAuthLoading]); // isAuthLoading도 의존성에 추가
+
+  const handleSave = async (
     updated: ExpertProfileData & { isProfileComplete: boolean }
   ) => {
     // ExpertProfileData를 ExpertProfileType으로 변환하여 스토어에 저장
@@ -350,11 +452,15 @@ export default function ExpertProfilePage() {
       lastActiveAt: (updated as any).lastActiveAt || new Date(),
       joinedAt: (updated as any).joinedAt || new Date(),
       reschedulePolicy: (updated as any).reschedulePolicy || "12시간 전 일정 변경 가능",
-      pricingTiers: (updated as any).pricingTiers || [
-        { duration: 30, price: 25000, description: "기본 상담" },
-        { duration: 60, price: 45000, description: "상세 상담" },
-        { duration: 90, price: 65000, description: "종합 상담" }
-      ],
+      pricingTiers: (updated as any).pricingTiers || (updated.hourlyRate ? [
+        { duration: 30, price: Math.round(updated.hourlyRate * 0.5), description: "기본 상담" },
+        { duration: 60, price: updated.hourlyRate, description: "상세 상담" },
+        { duration: 90, price: Math.round(updated.hourlyRate * 1.5), description: "종합 상담" }
+      ] : [
+        { duration: 30, price: 15000, description: "기본 상담" },
+        { duration: 60, price: 30000, description: "상세 상담" },
+        { duration: 90, price: 45000, description: "종합 상담" }
+      ]),
       tags: updated.specialties,
       targetAudience: (updated as any).targetAudience || ['성인', '직장인', '학생'],
       isOnline: true,
@@ -363,9 +469,48 @@ export default function ExpertProfilePage() {
       updatedAt: new Date(),
     };
 
-    // 중앙 서비스에 업데이트 (임시로 주석 처리)
-    // const success = expertDataService.updateExpertProfile(currentExpertId || Date.now(), expertProfile);
-    const success = true; // 임시로 성공으로 처리
+    // 실제 API를 통해 전문가 프로필 업데이트
+    let success = false;
+    try {
+      if (currentExpertId) {
+        console.log(`🔄 전문가 프로필 업데이트 API 호출: ID=${currentExpertId}`);
+        const response = await fetch(`/api/expert-profiles/${currentExpertId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: updated.name,
+            specialty: updated.specialty,
+            experience: updated.experience,
+            description: updated.description,
+            education: updated.education,
+            certifications: updated.certifications,
+            specialties: updated.specialties,
+            consultationTypes: updated.consultationTypes,
+            languages: updated.languages,
+            hourlyRate: updated.hourlyRate,
+            pricePerMinute: updated.pricePerMinute,
+            availability: updated.availability,
+            contactInfo: updated.contactInfo,
+            profileImage: updated.profileImage,
+            portfolioFiles: updated.portfolioFiles
+          })
+        });
+
+        const result = await response.json();
+        success = result.success;
+
+        if (!success) {
+          console.error('❌ API 업데이트 실패:', result.error);
+        } else {
+          console.log('✅ API 업데이트 성공');
+        }
+      }
+    } catch (error) {
+      console.error('❌ API 호출 중 에러:', error);
+      success = false;
+    }
     
     if (success) {
       // 스토어에도 업데이트 (기존 호환성)
@@ -423,105 +568,25 @@ export default function ExpertProfilePage() {
 
 
 
-  // 인증되지 않은 사용자 처리
+  // 인증 로딩 중이거나 전체 로딩 중일 때 스켈레톤 표시
+  if (isAuthLoading || isLoading) {
+    return <SkeletonLoader />;
+  }
+
+  // 인증이 완료되었는데 사용자가 없으면 리다이렉트
   if (!appState.isAuthenticated || !appState.user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-red-600 mb-4">
-            <svg className="h-16 w-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">로그인이 필요합니다</h2>
-          <p className="text-gray-600 mb-4">전문가 프로필을 보려면 먼저 로그인해주세요.</p>
-          <button 
-            onClick={() => window.location.href = '/auth/login'}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            로그인하기
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-
-
-  // 스켈레톤 UI 컴포넌트
-  const SkeletonLoader = () => (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <div className="h-8 bg-gray-200 rounded w-48 mb-2 animate-pulse"></div>
-            <div className="h-4 bg-gray-200 rounded w-64 animate-pulse"></div>
-          </div>
-          <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
-        </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* 메인 컨텐츠 스켈레톤 */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* 기본 정보 카드 */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-start space-x-6">
-                <div className="w-36 h-48 bg-gray-200 rounded-lg animate-pulse"></div>
-                <div className="flex-1 space-y-4">
-                  <div className="h-6 bg-gray-200 rounded w-3/4 animate-pulse"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse"></div>
-                  <div className="h-4 bg-gray-200 rounded w-2/3 animate-pulse"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse"></div>
-                </div>
-              </div>
-            </div>
-            
-            {/* 상세 정보 카드들 */}
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="h-6 bg-gray-200 rounded w-1/4 mb-4 animate-pulse"></div>
-                <div className="space-y-3">
-                  <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
-                  <div className="h-4 bg-gray-200 rounded w-5/6 animate-pulse"></div>
-                  <div className="h-4 bg-gray-200 rounded w-4/6 animate-pulse"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          {/* 사이드바 스켈레톤 */}
-          <div className="space-y-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="h-6 bg-gray-200 rounded w-1/3 mb-4 animate-pulse"></div>
-                <div className="space-y-3">
-                  <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // 로딩 중일 때 스켈레톤 표시
-  if (isLoading) {
-    return <SkeletonLoader />;
-  }
-
-  // 인증되지 않은 사용자는 리다이렉트 (로그인 필요 메시지 제거)
-  if (!appState.isAuthenticated || !user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">인증 정보를 확인 중입니다...</p>
+          <p className="text-gray-600">로그인 페이지로 이동 중...</p>
         </div>
       </div>
     );
   }
+
+
+
 
   // 프로필 데이터 로딩 중일 때 스켈레톤 표시
   if (!initialData) {

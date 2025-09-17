@@ -34,6 +34,7 @@ export default function ProtectedRoute({
     isAuthenticated: false,
     user: null
   });
+  const [isLoading, setIsLoading] = useState(true); // 로딩 상태 추가
 
   // 앱 상태 로드
   useEffect(() => {
@@ -101,6 +102,8 @@ export default function ProtectedRoute({
         }
       } catch (error) {
         console.error('앱 상태 로드 실패:', error);
+      } finally {
+        setIsLoading(false); // 로딩 완료
       }
     };
 
@@ -110,6 +113,11 @@ export default function ProtectedRoute({
   const { hasEnteredService, isAuthenticated } = appState;
 
   useEffect(() => {
+    // 로딩이 완료되지 않았으면 아직 리다이렉트하지 않음
+    if (isLoading) {
+      return;
+    }
+
     // 대시보드나 설정 페이지에 접근할 때 자동으로 서비스 진입 상태로 설정
     if (pathname.startsWith('/dashboard') || pathname.startsWith('/chat') || pathname.startsWith('/summary')) {
       if (!hasEnteredService) {
@@ -153,10 +161,10 @@ export default function ProtectedRoute({
       router.push(`/auth/login?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
-  }, [hasEnteredService, isAuthenticated, requireAuth, router, pathname]);
+  }, [hasEnteredService, isAuthenticated, requireAuth, router, pathname, isLoading]);
 
   // 로딩 중이거나 리다이렉트 중인 경우
-  if (!hasEnteredService || (requireAuth && !isAuthenticated)) {
+  if (isLoading || !hasEnteredService || (requireAuth && !isAuthenticated)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">

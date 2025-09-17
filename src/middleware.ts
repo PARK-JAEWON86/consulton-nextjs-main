@@ -47,7 +47,17 @@ export async function middleware(request: NextRequest) {
   }
 
   // 전문가 프로필 조회는 공개 허용
-  if (pathname.startsWith('/api/expert-profiles')) {
+  if (pathname.startsWith('/api/expert-profiles') ||
+      pathname.startsWith('/api/experts-working') ||
+      pathname.startsWith('/api/experts-simple') ||
+      pathname.startsWith('/api/test-experts-debug')) {
+    return NextResponse.next();
+  }
+
+  // 전문가 통계 조회 - 랭킹 목적은 공개 허용
+  if (pathname.startsWith('/api/expert-stats') &&
+      (request.nextUrl.searchParams.get('rankingType') ||
+       request.nextUrl.searchParams.get('includeRanking'))) {
     return NextResponse.next();
   }
 

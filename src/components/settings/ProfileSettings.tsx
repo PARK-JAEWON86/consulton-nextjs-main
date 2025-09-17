@@ -109,22 +109,7 @@ const ProfileSettings = () => {
         }
       } catch (error) {
         console.error('프로필 로드 실패:', error);
-        // 에러가 발생해도 기본값으로 설정하여 알러트 방지
-        setProfile({
-          firstName: "김철수",
-          lastName: "",
-          displayName: "철수킹",
-          email: "kimcheolsu@example.com",
-          phone: "010-1234-5678",
-          profileImage: null,
-          interestedCategories: ["career", "psychology", "finance"],
-          profileVisibility: "experts",
-        });
-        setPhoneVerification(prev => ({
-          ...prev,
-          isVerified: true,
-          originalPhone: "010-1234-5678"
-        }));
+        setError('프로필 정보를 불러올 수 없습니다. 페이지를 새로고침해주세요.');
       } finally {
         setIsLoading(false);
       }

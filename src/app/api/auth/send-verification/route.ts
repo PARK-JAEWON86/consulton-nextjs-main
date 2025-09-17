@@ -3,6 +3,7 @@ import { User } from '@/lib/db/models';
 import { initializeDatabase } from '@/lib/db/init';
 import { validateEmail } from '@/lib/auth';
 import { storeVerificationCode } from '@/utils/verificationStore';
+import { emailService } from '@/lib/email/sesService';
 
 // 이메일 인증 코드 발송 API
 export async function POST(request: NextRequest) {
@@ -52,17 +53,21 @@ export async function POST(request: NextRequest) {
     // 인증 코드 저장 (10분 유효)
     storeVerificationCode(email.toLowerCase(), verificationCode, user.id, 10);
 
-    // 실제 프로덕션에서는 이메일 발송 서비스 사용
-    // 예: SendGrid, AWS SES, Nodemailer 등
-    console.log(`📧 인증 코드 발송: ${email} -> ${verificationCode}`);
-    
-    // 개발 환경에서는 콘솔에 코드 출력
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🔐 개발용 인증 코드: ${verificationCode}`);
+    // AWS SES를 통한 인증 이메일 발송
+    const emailSent = await emailService.sendVerificationEmail(email, verificationCode);
+
+    if (!emailSent) {
+      console.error('이메일 발송 실패:', email);
+      // 이메일 발송 실패 시에도 개발환경에서는 성공으로 처리
+      if (process.env.NODE_ENV !== 'development') {
+        return NextResponse.json(
+          { error: "인증 이메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요." },
+          { status: 500 }
+        );
+      }
     }
 
-    // 실제 이메일 발송 로직 (예시)
-    // await sendVerificationEmail(email, verificationCode);
+    console.log(`📧 인증 코드 발송 완료: ${email} -> ${verificationCode}`);
 
     return NextResponse.json({
       success: true,
@@ -83,30 +88,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 실제 이메일 발송 함수 (구현 예시)
-async function sendVerificationEmail(email: string, code: string) {
-  // 실제 이메일 발송 서비스 연동
-  // 예: SendGrid, AWS SES, Nodemailer 등
-  
-  const emailContent = {
-    to: email,
-    subject: 'ConsultOn 이메일 인증',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>ConsultOn 이메일 인증</h2>
-        <p>안녕하세요! ConsultOn 회원가입을 완료하기 위해 이메일 인증이 필요합니다.</p>
-        <div style="background-color: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">
-          <h3 style="color: #333; margin: 0;">인증 코드</h3>
-          <h1 style="color: #007bff; margin: 10px 0; font-size: 32px; letter-spacing: 5px;">${code}</h1>
-        </div>
-        <p>위 인증 코드를 입력하여 이메일 인증을 완료해주세요.</p>
-        <p style="color: #666; font-size: 14px;">이 코드는 10분 후에 만료됩니다.</p>
-        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-        <p style="color: #999; font-size: 12px;">이 이메일은 ConsultOn 회원가입 과정에서 발송되었습니다.</p>
-      </div>
-    `
-  };
-
-  // 실제 이메일 발송 로직 구현
-  console.log('이메일 발송:', emailContent);
-}

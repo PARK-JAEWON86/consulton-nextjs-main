@@ -394,12 +394,14 @@ const Sidebar: React.FC<SidebarProps> = ({
       return "user";
     }
     
-    // 5. 사용자 role에 따라 결정 (로그인 직후 자동 결정)
-    if (user?.role === 'expert') {
+    // 5. 사용자 role에 따라 결정 (로그인 직후 자동 결정) - 단, /experts, /chat 등 공통 페이지는 제외
+    const isCommonPage = pathname.startsWith("/experts") || pathname.startsWith("/chat") || pathname.startsWith("/credit-packages") || pathname.startsWith("/community");
+
+    if (!isCommonPage && user?.role === 'expert') {
       console.log('사용자 role 기반으로 expert 모드 결정');
       return "expert";
     }
-    if (user?.role === 'client' || user?.role === 'admin') {
+    if (!isCommonPage && (user?.role === 'client' || user?.role === 'admin')) {
       console.log('사용자 role 기반으로 user 모드 결정');
       return "user";
     }
@@ -610,7 +612,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     // 사용자 모드 메뉴 - 로그인 상태에 따라 다르게 표시
     const userMenu = [
-      { id: "home", name: "홈", icon: Home, path: "/dashboard" },
+      { id: "home", name: "대시보드", icon: Home, path: "/dashboard" },
       { id: "experts", name: "전문가 찾기", icon: Users, path: "/experts" },
       { id: "expert-consultation", name: "전문가 상담", icon: Calendar, path: "/expert-consultation" },
       { id: "chat", name: "AI채팅 상담", icon: MessageCircle, path: "/chat" },

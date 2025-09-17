@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { User } from '@/lib/db/models';
 import { initializeDatabase } from '@/lib/db/init';
-import { 
-  hashPassword, 
-  validateEmail, 
+import {
+  hashPassword,
+  validateEmail,
   validatePasswordStrength,
   generateToken,
-  AuthUser 
+  AuthUser
 } from '@/lib/auth';
+import { emailService } from '@/lib/email/sesService';
 
 // 회원가입 API
 export async function POST(request: NextRequest) {
@@ -115,6 +116,11 @@ export async function POST(request: NextRequest) {
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
     });
+
+    // 회원가입 환영 이메일 발송 (비동기, 실패해도 회원가입은 성공으로 처리)
+    emailService.sendWelcomeEmail(newUser.email, newUser.name || '회원')
+      .then(() => console.log(`✅ 환영 이메일 발송 완료: ${newUser.email}`))
+      .catch(error => console.error(`❌ 환영 이메일 발송 실패: ${newUser.email}`, error));
 
     return response;
 

@@ -100,22 +100,50 @@ export default function PopularCategoriesSection({
               </div>
             ))
           ) : (
-            categories.slice(0, 5).map((category) => {
+            categories.slice(0, 5).map((category, index) => {
               const IconComponent = getIconComponent(category.icon as string);
+              const isTopCategory = index < 3; // 상위 3개는 특별 표시
+              const popularityRank = (category as any).popularityRank || index + 1;
+              const consultationCount = (category as any).consultationCount || 0;
+
               return (
                 <div
                   key={category.id}
-                  className="bg-white rounded-xl p-3 sm:p-4 text-center hover:shadow-lg transition-shadow duration-200 cursor-pointer min-h-[120px] sm:min-h-[160px] flex flex-col justify-center"
+                  className={`bg-white rounded-xl p-3 sm:p-4 text-center hover:shadow-lg transition-all duration-200 cursor-pointer min-h-[120px] sm:min-h-[160px] flex flex-col justify-center relative ${
+                    isTopCategory ? 'ring-2 ring-blue-200 bg-gradient-to-br from-white to-blue-50' : ''
+                  }`}
                 >
+                  {/* 인기 순위 뱃지 */}
+                  {isTopCategory && (
+                    <div className={`absolute -top-2 -left-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                      popularityRank === 1 ? 'bg-yellow-500' :
+                      popularityRank === 2 ? 'bg-gray-400' :
+                      'bg-orange-400'
+                    }`}>
+                      {popularityRank}
+                    </div>
+                  )}
+
                   <div className="flex justify-center mb-2 sm:mb-3">
-                    <IconComponent className="h-6 w-6 sm:h-10 sm:w-10 text-blue-600" />
+                    <IconComponent className={`h-6 w-6 sm:h-10 sm:w-10 ${
+                      isTopCategory ? 'text-blue-700' : 'text-blue-600'
+                    }`} />
                   </div>
+
                   <h3 className="font-semibold text-gray-900 mb-1 sm:mb-2 text-xs sm:text-sm">
                     {category.name}
                   </h3>
-                  <p className="text-xs text-gray-600 leading-relaxed">
+
+                  <p className="text-xs text-gray-600 leading-relaxed mb-2">
                     {category.description}
                   </p>
+
+                  {/* 상담 수 표시 (데이터가 있을 때만) */}
+                  {consultationCount > 0 && (
+                    <div className="text-xs text-blue-600 font-medium">
+                      {consultationCount.toLocaleString()}+ 상담
+                    </div>
+                  )}
                 </div>
               );
             })

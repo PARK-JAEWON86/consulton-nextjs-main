@@ -209,8 +209,8 @@ const ExpertSearch = () => {
             specialtyAreas: apiExpert.keywords || [],
             consultationTypes: apiExpert.consultationTypes || [],
             languages: apiExpert.languages || ['한국어'],
-            hourlyRate: 0,
-            pricePerMinute: 0,
+            hourlyRate: apiExpert.hourlyRate || 0,
+            pricePerMinute: Math.ceil((apiExpert.hourlyRate || 0) / 60),
             totalSessions: apiExpert.totalSessions || 0,
             avgRating: apiExpert.rating || 4.5,
             rating: apiExpert.rating || 4.5,
@@ -240,7 +240,7 @@ const ExpertSearch = () => {
             isProfileComplete: true,
             createdAt: new Date(apiExpert.createdAt),
             updatedAt: new Date(apiExpert.updatedAt),
-            price: apiExpert.hourlyRate ? `₩${apiExpert.hourlyRate.toLocaleString()}` : '가격 문의',
+            price: (apiExpert.hourlyRate && apiExpert.hourlyRate > 0) ? `₩${apiExpert.hourlyRate.toLocaleString()}` : '가격 문의',
             image: apiExpert.profileImage || null,
             consultationStyle: '체계적이고 전문적인 접근',
             successStories: 50,
@@ -254,9 +254,9 @@ const ExpertSearch = () => {
               publications: []
             },
             pricingTiers: apiExpert.pricingTiers || [
-              { duration: 30, price: Math.round((apiExpert.hourlyRate || 50000) * 0.5), description: '기본 상담' },
-              { duration: 60, price: apiExpert.hourlyRate || 50000, description: '상세 상담' },
-              { duration: 90, price: Math.round((apiExpert.hourlyRate || 50000) * 1.5), description: '종합 상담' }
+              { duration: 30, price: Math.round((apiExpert.hourlyRate || 300) * 0.5), description: '기본 상담' },
+              { duration: 60, price: apiExpert.hourlyRate || 300, description: '상세 상담' },
+              { duration: 90, price: Math.round((apiExpert.hourlyRate || 300) * 1.5), description: '종합 상담' }
             ],
             reschedulePolicy: '12시간 전 일정 변경 가능',
             // 정렬을 위한 추가 필드들
@@ -526,8 +526,8 @@ const ExpertSearch = () => {
           specialtyAreas: apiExpert.keywords || [],
           consultationTypes: apiExpert.consultationTypes || [],
           languages: apiExpert.languages || ['한국어'],
-          hourlyRate: 0,
-          pricePerMinute: 0,
+          hourlyRate: apiExpert.hourlyRate || 0,
+          pricePerMinute: Math.ceil((apiExpert.hourlyRate || 0) / 60),
           totalSessions: apiExpert.totalSessions || 0,
           avgRating: apiExpert.rating || 4.5,
           rating: apiExpert.rating || 4.5,
@@ -557,7 +557,7 @@ const ExpertSearch = () => {
           isProfileComplete: true,
           createdAt: new Date(apiExpert.createdAt),
           updatedAt: new Date(apiExpert.updatedAt),
-          price: '₩50,000',
+          price: (apiExpert.hourlyRate && apiExpert.hourlyRate > 0) ? `₩${apiExpert.hourlyRate.toLocaleString()}` : '가격 문의',
           image: apiExpert.profileImage || null,
           consultationStyle: '체계적이고 전문적인 접근',
           successStories: 50,
@@ -570,10 +570,10 @@ const ExpertSearch = () => {
             website: undefined,
             publications: []
           },
-          pricingTiers: [
-            { duration: 30, price: 25000, description: '기본 상담' },
-            { duration: 60, price: 45000, description: '상세 상담' },
-            { duration: 90, price: 65000, description: '종합 상담' }
+          pricingTiers: apiExpert.pricingTiers || [
+            { duration: 30, price: Math.round((apiExpert.hourlyRate || 300) * 0.5), description: '기본 상담' },
+            { duration: 60, price: apiExpert.hourlyRate || 300, description: '상세 상담' },
+            { duration: 90, price: Math.round((apiExpert.hourlyRate || 300) * 1.5), description: '종합 상담' }
           ],
           reschedulePolicy: '12시간 전 일정 변경 가능',
           // 정렬을 위한 추가 필드들

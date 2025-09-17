@@ -24,6 +24,7 @@ interface ExpertAttributes {
   consultationTypes: string; // 상담 유형 (JSON 문자열)
   hourlyRate: number; // 시간당 요금
   pricePerMinute: number; // 분당 요금
+  // pricePerCredit: number; // 크레딧당 요금 (1분당 크레딧 수) - DB 컬럼 추가 후 활성화
   profileViews: number; // 프로필 조회수
   lastActiveAt: Date; // 마지막 활동 시간
   joinedAt: Date; // 가입일
@@ -51,6 +52,7 @@ type ExpertCreationAttributes = Optional<
   | "consultationTypes"
   | "hourlyRate"
   | "pricePerMinute"
+  // | "pricePerCredit"
   | "profileViews"
   | "lastActiveAt"
   | "joinedAt"
@@ -79,6 +81,7 @@ export class Expert
   public consultationTypes!: string;
   public hourlyRate!: number;
   public pricePerMinute!: number;
+  // public pricePerCredit!: number; // DB 컬럼 추가 후 활성화
   public profileViews!: number;
   public lastActiveAt!: Date;
   public joinedAt!: Date;
@@ -220,6 +223,12 @@ Expert.init(
       defaultValue: 0,
       comment: '분당 요금 (원)'
     },
+    // pricePerCredit: {
+    //   type: DataTypes.INTEGER.UNSIGNED,
+    //   allowNull: false,
+    //   defaultValue: 10,
+    //   comment: '분당 크레딧 수'
+    // },
     profileViews: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,

@@ -4,19 +4,10 @@ import { initializeDatabase } from '@/lib/db/init';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { calculateRankingScore } from '@/utils/rankingCalculator';
 
-// 랭킹 점수를 레벨로 변환하는 함수 (expert-levels API와 동일)
+// 랭킹 점수를 레벨로 변환하는 함수 (0-100점 체계)
 const calculateLevelByScore = (rankingScore: number = 0): number => {
-  if (rankingScore >= 950) return 999;
-  if (rankingScore >= 900) return Math.floor(900 + (rankingScore - 900) * 2);
-  if (rankingScore >= 850) return Math.floor(800 + (rankingScore - 850) * 2);
-  if (rankingScore >= 800) return Math.floor(700 + (rankingScore - 800) * 2);
-  if (rankingScore >= 750) return Math.floor(600 + (rankingScore - 750) * 2);
-  if (rankingScore >= 700) return Math.floor(500 + (rankingScore - 700) * 2);
-  if (rankingScore >= 650) return Math.floor(400 + (rankingScore - 650) * 2);
-  if (rankingScore >= 600) return Math.floor(300 + (rankingScore - 600) * 2);
-  if (rankingScore >= 550) return Math.floor(200 + (rankingScore - 550) * 2);
-  if (rankingScore >= 500) return Math.floor(100 + (rankingScore - 500));
-  return Math.max(1, Math.floor(rankingScore / 5));
+  // 0-100점 체계에서는 점수 = 레벨
+  return Math.max(0, Math.min(100, Math.round(rankingScore)));
 };
 
 // ExpertStats 인터페이스 정의
@@ -74,7 +65,7 @@ export async function GET(request: NextRequest) {
             model: ExpertProfile,
             as: 'profile',
             required: false,
-            attributes: ['level', 'totalSessions', 'avgRating', 'reviewCount']
+            attributes: ['totalSessions']
           }
         ]
       });
@@ -127,7 +118,7 @@ export async function GET(request: NextRequest) {
         repeatClients: 0, // TODO: 반복 클라이언트 계산 로직 구현
         avgRating: Math.round(avgRating * 100) / 100,
         reviewCount: reviews.length,
-        likeCount: reviews.reduce((sum, review) => sum + review.helpfulCount, 0),
+        likeCount: reviews.reduce((sum, review) => sum + (review.helpfulCount || 0), 0),
         ratingDistribution,
         specialty: expert.specialty || '일반',
         lastUpdated: new Date().toISOString(),
@@ -191,7 +182,7 @@ export async function GET(request: NextRequest) {
             model: ExpertProfile,
             as: 'profile',
             required: false,
-            attributes: ['level', 'totalSessions', 'avgRating', 'reviewCount']
+            attributes: ['totalSessions']
           }
         ]
       });
@@ -223,7 +214,7 @@ export async function GET(request: NextRequest) {
             repeatClients: 0,
             avgRating: Math.round(avgRating * 100) / 100,
             reviewCount: reviews.length,
-            likeCount: reviews.reduce((sum, review) => sum + review.helpfulCount, 0),
+            likeCount: reviews.reduce((sum, review) => sum + (review.helpfulCount || 0), 0),
             ratingDistribution: {
               5: reviews.filter(r => r.rating === 5).length,
               4: reviews.filter(r => r.rating === 4).length,
@@ -234,8 +225,8 @@ export async function GET(request: NextRequest) {
             specialty: expert.specialty || '일반',
             lastUpdated: new Date().toISOString(),
             rankingScore,
-            // 프로필에서 레벨 가져오기
-            level: (expert as any).profile?.level || 1
+            // 랭킹점수를 기반으로 실시간 레벨 계산
+            level: calculateLevelByScore(rankingScore)
           };
         })
       );
@@ -277,7 +268,7 @@ export async function GET(request: NextRequest) {
             model: ExpertProfile,
             as: 'profile',
             required: false,
-            attributes: ['level', 'totalSessions', 'avgRating', 'reviewCount']
+            attributes: ['totalSessions']
           }
         ]
       });
@@ -309,7 +300,7 @@ export async function GET(request: NextRequest) {
             repeatClients: 0,
             avgRating: Math.round(avgRating * 100) / 100,
             reviewCount: reviews.length,
-            likeCount: reviews.reduce((sum, review) => sum + review.helpfulCount, 0),
+            likeCount: reviews.reduce((sum, review) => sum + (review.helpfulCount || 0), 0),
             ratingDistribution: {
               5: reviews.filter(r => r.rating === 5).length,
               4: reviews.filter(r => r.rating === 4).length,
@@ -320,8 +311,8 @@ export async function GET(request: NextRequest) {
             specialty: expert.specialty || '일반',
             lastUpdated: new Date().toISOString(),
             rankingScore,
-            // 프로필에서 레벨 가져오기
-            level: (expert as any).profile?.level || 1
+            // 랭킹점수를 기반으로 실시간 레벨 계산
+            level: calculateLevelByScore(rankingScore)
           };
         })
       );
@@ -355,7 +346,7 @@ export async function GET(request: NextRequest) {
             model: ExpertProfile,
             as: 'profile',
             required: false,
-            attributes: ['level', 'totalSessions', 'avgRating', 'reviewCount']
+            attributes: ['totalSessions']
           }
         ]
       });
@@ -387,7 +378,7 @@ export async function GET(request: NextRequest) {
             repeatClients: 0,
             avgRating: Math.round(avgRating * 100) / 100,
             reviewCount: reviews.length,
-            likeCount: reviews.reduce((sum, review) => sum + review.helpfulCount, 0),
+            likeCount: reviews.reduce((sum, review) => sum + (review.helpfulCount || 0), 0),
             ratingDistribution: {
               5: reviews.filter(r => r.rating === 5).length,
               4: reviews.filter(r => r.rating === 4).length,
@@ -398,8 +389,8 @@ export async function GET(request: NextRequest) {
             specialty: expert.specialty || '일반',
             lastUpdated: new Date().toISOString(),
             rankingScore,
-            // 프로필에서 레벨 가져오기
-            level: (expert as any).profile?.level || 1
+            // 랭킹점수를 기반으로 실시간 레벨 계산
+            level: calculateLevelByScore(rankingScore)
           };
         })
       );

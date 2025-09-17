@@ -29,20 +29,33 @@ export default function ConsultationRequestsPage() {
   const loadRequests = async () => {
     try {
       setIsLoading(true);
-      
-      // 임시 전문가 ID (실제로는 인증 시스템에서 가져와야 함)
-      const expertId = 'expert_1';
-      
-      const response = await fetch(`/api/consultation-requests?expertId=${expertId}&limit=100`);
+
+      const response = await fetch('/api/expert/consultations');
       const result = await response.json();
-      
+
       if (result.success) {
-        setRequests(result.data.requests);
+        // API 응답을 ConsultationRequest 형태로 변환
+        const consultationRequests = result.data.consultations.map((consultation: any) => ({
+          id: consultation.id,
+          clientName: consultation.user?.name || '이름 없음',
+          clientEmail: consultation.user?.email || '',
+          consultationType: consultation.consultationType,
+          message: consultation.description,
+          preferredDate: consultation.scheduledTime || null,
+          status: consultation.status,
+          createdAt: consultation.createdAt,
+          updatedAt: consultation.updatedAt,
+          expiresAt: null, // 필요시 계산
+          budget: consultation.price || 0
+        }));
+        setRequests(consultationRequests);
       } else {
-        console.error('상담 신청 목록 로드 실패:', result.error);
+        console.error('상담 신청 목록 로드 실패:', result.message);
+        setRequests([]);
       }
     } catch (error) {
       console.error('상담 신청 목록 로드 오류:', error);
+      setRequests([]);
     } finally {
       setIsLoading(false);
     }
@@ -53,14 +66,15 @@ export default function ConsultationRequestsPage() {
     if (!selectedRequest) return;
 
     try {
-      const response = await fetch('/api/consultation-requests', {
-        method: 'PATCH',
+      const newStatus = actionType === 'accept' ? 'scheduled' : 'cancelled';
+
+      const response = await fetch('/api/expert/consultations', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          requestId: selectedRequest.id,
-          status: actionType === 'accept' ? 'accepted' : 'rejected',
-          expertId: 'expert_1',
-          expertMessage: expertMessage.trim() || undefined
+          consultationId: selectedRequest.id,
+          status: newStatus,
+          notes: expertMessage.trim() || undefined
         })
       });
 
@@ -68,21 +82,24 @@ export default function ConsultationRequestsPage() {
 
       if (result.success) {
         // 로컬 상태 업데이트
-        setRequests(prev => 
-          prev.map(request => 
-            request.id === selectedRequest.id 
-              ? { ...request, status: actionType === 'accept' ? 'accepted' : 'rejected', updatedAt: new Date() }
+        setRequests(prev =>
+          prev.map(request =>
+            request.id === selectedRequest.id
+              ? { ...request, status: newStatus, updatedAt: new Date() }
               : request
           )
         );
-        
+
         setShowActionModal(false);
         setSelectedRequest(null);
         setExpertMessage('');
-        
+
         alert(`상담 신청이 ${actionType === 'accept' ? '수락' : '거절'}되었습니다.`);
+
+        // 목록 새로고침
+        loadRequests();
       } else {
-        alert(`상담 신청 처리에 실패했습니다: ${result.error}`);
+        alert(`상담 신청 처리에 실패했습니다: ${result.message}`);
       }
     } catch (error) {
       console.error('상담 신청 처리 오류:', error);
@@ -124,8 +141,10 @@ export default function ConsultationRequestsPage() {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'accepted':
+      case 'scheduled':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'rejected':
+      case 'cancelled':
         return 'bg-red-100 text-red-800 border-red-200';
       case 'expired':
         return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -140,8 +159,10 @@ export default function ConsultationRequestsPage() {
       case 'pending':
         return '대기 중';
       case 'accepted':
+      case 'scheduled':
         return '수락됨';
       case 'rejected':
+      case 'cancelled':
         return '거절됨';
       case 'expired':
         return '만료됨';
@@ -153,6 +174,8 @@ export default function ConsultationRequestsPage() {
   // 필터링된 신청 목록
   const filteredRequests = requests.filter(request => {
     if (filter === 'all') return true;
+    if (filter === 'accepted') return request.status === 'scheduled' || request.status === 'accepted';
+    if (filter === 'rejected') return request.status === 'cancelled' || request.status === 'rejected';
     return request.status === filter;
   });
 
@@ -172,13 +195,75 @@ export default function ConsultationRequestsPage() {
             </p>
           </div>
 
+          {/* KPI 카드 섹션 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            {/* 전체 요청 */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="text-sm text-gray-600 mb-2">전체 요청</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {requests.length} 건
+              </div>
+              <div className="mt-2 text-xs text-gray-500">
+                총 예산: {requests.reduce((sum, req) => sum + (req.budget || 0), 0).toLocaleString()} 크레딧
+              </div>
+            </div>
+
+            {/* 신규 요청 (대기 중) */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="text-sm text-gray-600 mb-2">신규 요청</div>
+              <div className="text-2xl font-bold text-orange-600">
+                {requests.filter(r => r.status === 'pending').length} 건
+              </div>
+              <div className="mt-2 text-xs inline-flex items-center px-3 py-0.5 rounded-full font-medium bg-orange-100 text-orange-700 whitespace-nowrap">
+                {(() => {
+                  const urgentCount = requests.filter(r => {
+                    try {
+                      const notes = JSON.parse(r.notes || '{}');
+                      return r.status === 'pending' && notes.urgency === 'high';
+                    } catch {
+                      return false;
+                    }
+                  }).length;
+                  return urgentCount;
+                })()}건 긴급
+              </div>
+            </div>
+
+            {/* 요청 수락 */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="text-sm text-gray-600 mb-2">요청 수락</div>
+              <div className="text-2xl font-bold text-green-600">
+                {requests.filter(r => r.status === 'scheduled' || r.status === 'accepted').length} 건
+              </div>
+              <div className="mt-2 text-xs inline-flex items-center px-3 py-0.5 rounded-full font-medium bg-green-100 text-green-700 whitespace-nowrap">
+                수락률 {requests.length > 0 ? Math.round((requests.filter(r => r.status === 'scheduled' || r.status === 'accepted').length / requests.length) * 100) : 0}%
+              </div>
+            </div>
+
+            {/* 완료된 상담 */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="text-sm text-gray-600 mb-2">완료된 상담</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {requests.filter(r => r.status === 'completed').length} 건
+              </div>
+              <div className="mt-2 text-xs text-gray-500">
+                평균 {(() => {
+                  const completedRequests = requests.filter(r => r.status === 'completed');
+                  return completedRequests.length > 0
+                    ? Math.round(completedRequests.reduce((sum, req) => sum + (req.budget || 0), 0) / completedRequests.length)
+                    : 0;
+                })().toLocaleString()} 크레딧
+              </div>
+            </div>
+          </div>
+
           {/* 필터 */}
           <div className="mb-6">
             <div className="flex space-x-2">
               {[
                 { key: 'pending', label: '대기 중', count: requests.filter(r => r.status === 'pending').length },
-                { key: 'accepted', label: '수락됨', count: requests.filter(r => r.status === 'accepted').length },
-                { key: 'rejected', label: '거절됨', count: requests.filter(r => r.status === 'rejected').length },
+                { key: 'accepted', label: '수락됨', count: requests.filter(r => r.status === 'scheduled' || r.status === 'accepted').length },
+                { key: 'rejected', label: '거절됨', count: requests.filter(r => r.status === 'cancelled' || r.status === 'rejected').length },
                 { key: 'all', label: '전체', count: requests.length }
               ].map((filterOption) => (
                 <button

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Expert, ExpertProfile as ExpertProfileModel, User } from '@/lib/db/models';
 import { initializeDatabase } from '@/lib/db/init';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { Op } from 'sequelize';
 import { 
   searchExpertProfiles, 
   calculatePagination,
@@ -138,12 +139,103 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // 기본 전문가 목록 조회 (임시로 빈 응답 반환)
+    // 기본 전문가 목록 조회
+    console.log('전체 전문가 목록 조회 시작...');
+
+    const startTime = performance.now();
+
+    // 페이지네이션 파라미터
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const offset = (page - 1) * limit;
+
+    // 검색 및 필터링 조건
+    const where: any = {};
+
+    if (query) {
+      where[Op.or] = [
+        { specialty: { [Op.like]: `%${query}%` } },
+        { '$user.name$': { [Op.like]: `%${query}%` } },
+        { '$profile.bio$': { [Op.like]: `%${query}%` } }
+      ];
+    }
+
+    if (specialty) {
+      where.specialty = specialty;
+    }
+
+    // 전문가 목록 조회 (간단한 방식으로 변경)
+    const experts = await Expert.findAll({
+      where,
+      include: [
+        {
+          model: User,
+          as: 'user',
+          required: false,
+          attributes: ['id', 'email', 'name']
+        }
+      ],
+      order: [
+        ['avgRating', 'DESC'],
+        ['id', 'ASC']
+      ],
+      limit,
+      offset
+    });
+
+    const result = {
+      count: experts.length,
+      rows: experts
+    };
+
+    console.log(`전문가 조회 완료: ${result.count}명 (${result.rows.length}명 반환)`);
+
+    // 결과 변환 (간단하게)
+    const profiles: ExpertProfile[] = result.rows.map(expert => ({
+      id: expert.id.toString(),
+      email: expert.user?.email || '',
+      fullName: expert.user?.name || '이름 없음',
+      jobTitle: expert.specialty + ' 전문가',
+      specialty: expert.specialty,
+      experienceYears: expert.experience || 0,
+      bio: expert.specialty + ' 분야의 전문 상담을 제공합니다.',
+      keywords: [expert.specialty],
+      consultationTypes: ['video', 'chat'],
+      availability: {},
+      certifications: [],
+      profileImage: null,
+      status: 'approved' as const,
+      createdAt: expert.createdAt.toISOString(),
+      updatedAt: expert.updatedAt.toISOString(),
+      rating: expert.avgRating || expert.rating || 4.5,
+      reviewCount: expert.reviewCount || 0,
+      totalSessions: expert.totalSessions || 0,
+      repeatClients: 0,
+      responseTime: expert.responseTime || '1시간 이내',
+      languages: ['한국어'],
+      location: expert.location || '서울특별시',
+      timeZone: expert.timeZone || 'Asia/Seoul',
+      hourlyRate: expert.pricePerMinute ? expert.pricePerMinute * 60 : 3000
+    }));
+
+    const endTime = performance.now();
+    const queryTime = Math.round((endTime - startTime) * 100) / 100;
+
+    console.log(`전문가 프로필 조회 완료: ${profiles.length}명, 처리시간: ${queryTime}ms`);
+
     return NextResponse.json({
       success: true,
       data: {
-        profiles: [],
-        total: 0
+        profiles,
+        total: result.count,
+        pagination: {
+          page,
+          limit,
+          totalPages: Math.ceil(result.count / limit),
+          hasNext: page * limit < result.count,
+          hasPrev: page > 1
+        },
+        processingTime: `${queryTime}ms`
       }
     });
     

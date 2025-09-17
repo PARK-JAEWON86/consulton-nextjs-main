@@ -97,6 +97,11 @@ export default function ExpertDashboardProfilePage() {
   const [requestStats, setRequestStats] = useState<any>(null);
   const [isLoadingRequests, setIsLoadingRequests] = useState(true);
 
+  // 알림 상태 추가
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(true);
+
   type PeriodKey = "today" | "last7" | "last30" | "thisMonth" | "lastWeek";
   const [period, setPeriod] = useState<PeriodKey>("lastWeek");
 
@@ -304,11 +309,11 @@ export default function ExpertDashboardProfilePage() {
         // 실제 API에서 상담 요청 데이터를 가져오기
         try {
           setIsLoadingRequests(true);
-          const requestsResponse = await fetch(`/api/consultation-requests?expertId=${expertId}`);
+          const requestsResponse = await fetch('/api/expert/consultations');
           if (requestsResponse.ok) {
             const requestsData = await requestsResponse.json();
-            setRequests(requestsData.requests || []);
-            setRequestStats(requestsData.stats || null);
+            setRequests(requestsData.data?.consultations || []);
+            setRequestStats(requestsData.data?.stats || null);
           } else {
             setRequests([]);
             setRequestStats(null);
@@ -319,6 +324,23 @@ export default function ExpertDashboardProfilePage() {
           setRequestStats(null);
         } finally {
           setIsLoadingRequests(false);
+        }
+
+        // 알림 데이터 로드
+        try {
+          setIsLoadingNotifications(true);
+          const notificationsResponse = await fetch('/api/notifications?limit=5&unreadOnly=true');
+          if (notificationsResponse.ok) {
+            const notificationsData = await notificationsResponse.json();
+            if (notificationsData.success) {
+              setNotifications(notificationsData.data.notifications || []);
+              setUnreadNotificationCount(notificationsData.data.unreadCount || 0);
+            }
+          }
+        } catch (error) {
+          console.error('알림 데이터 로드 실패:', error);
+        } finally {
+          setIsLoadingNotifications(false);
         }
       }
     }
@@ -388,178 +410,7 @@ export default function ExpertDashboardProfilePage() {
             </div>
           )}
 
-          {/* 상담 요청 관리 KPI 카드 */}
-          {requestStats && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-              {/* 전체 요청 */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <div className="text-sm text-gray-600 mb-2">전체 요청</div>
-                <div className="text-2xl font-bold text-gray-900">
-                  {requestStats.totalRequests} 건
-                </div>
-                <div className="mt-2 text-xs text-gray-500">
-                  총 예산: {requestStats.totalBudget.toLocaleString()} 크레딧
-                </div>
-              </div>
 
-              {/* 신규 요청 (대기 중) */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <div className="text-sm text-gray-600 mb-2">신규 요청</div>
-                <div className="text-2xl font-bold text-orange-600">
-                  {requestStats.pendingRequests} 건
-                </div>
-                <div className="mt-2 text-xs inline-flex items-center px-3 py-0.5 rounded-full font-medium bg-orange-100 text-orange-700 whitespace-nowrap">
-                  {requestStats.urgentRequests}건 긴급
-                </div>
-              </div>
-
-              {/* 요청 수락 */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <div className="text-sm text-gray-600 mb-2">요청 수락</div>
-                <div className="text-2xl font-bold text-green-600">
-                  {requestStats.acceptedRequests} 건
-                </div>
-                <div className="mt-2 text-xs inline-flex items-center px-3 py-0.5 rounded-full font-medium bg-green-100 text-green-700 whitespace-nowrap">
-                  수락률 {requestStats.acceptanceRate}%
-                </div>
-              </div>
-
-              {/* 완료된 상담 */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <div className="text-sm text-gray-600 mb-2">완료된 상담</div>
-                <div className="text-2xl font-bold text-blue-600">
-                  {requestStats.completedRequests} 건
-                </div>
-                <div className="mt-2 text-xs text-gray-500">
-                  평균 {requestStats.avgBudget.toLocaleString()} 크레딧
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 상담 요청 관리 섹션 */}
-          {requests.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-              {/* 신규 요청 목록 */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5 lg:col-span-2">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    신규 상담 요청
-                  </h3>
-                  <span className="text-sm text-gray-500">최신순</span>
-                </div>
-                {isLoadingRequests ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                      <p className="text-sm text-gray-600">상담 요청을 불러오는 중...</p>
-                    </div>
-                  </div>
-                ) : (() => {
-                  // 실제 API에서 대기 중인 상담 요청을 가져오기
-                  const pendingRequests = requests.filter((req: any) => req.status === 'pending');
-                  
-                  return pendingRequests.length > 0 ? (
-                    <ul className="divide-y divide-gray-200">
-                      {pendingRequests.map((req) => (
-                        <li key={req.id} className="py-3">
-                          <div className="flex items-start justify-between">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <div className="text-sm font-medium text-gray-900 truncate">
-                                  {req.clientName} · {req.topic}
-                                </div>
-                                {req.priority === 'urgent' && (
-                                  <span className="px-3 py-0.5 text-xs bg-red-100 text-red-700 rounded-full flex items-center justify-center whitespace-nowrap">
-                                    긴급
-                                  </span>
-                                )}
-                                {req.priority === 'high' && (
-                                  <span className="px-2 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
-                                    높음
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-xs text-gray-500 mb-1">
-                                {req.description.substring(0, 50)}...
-                              </div>
-                              <div className="text-xs text-gray-400">
-                                {format(new Date(req.requestedAt), "MM/dd HH:mm")} · 
-                                {req.consultationType} · {req.duration}분 · 
-                                {req.budget.toLocaleString()}크레딧
-                              </div>
-                            </div>
-                            <div className="ml-4 flex gap-2">
-                              <button className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700">
-                                수락
-                              </button>
-                              <button className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
-                                거절
-                              </button>
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="text-center py-8">
-                      <div className="text-gray-400 mb-3">
-                        <MessageCircle className="h-12 w-12 mx-auto" />
-                      </div>
-                      <p className="text-gray-500 text-sm">새로운 상담 요청이 없습니다</p>
-                      <p className="text-gray-400 text-xs mt-1">새로운 요청이 오면 여기에 표시됩니다</p>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* 요청 통계 요약 */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  요청 현황
-                </h3>
-                {requestStats && (
-                  <div className="space-y-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">대기 중</span>
-                      <span className="font-semibold text-orange-600">
-                        {requestStats.pendingRequests}건
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">수락됨</span>
-                      <span className="font-semibold text-green-600">
-                        {requestStats.acceptedRequests}건
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">완료됨</span>
-                      <span className="font-semibold text-blue-600">
-                        {requestStats.completedRequests}건
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">거절됨</span>
-                      <span className="font-semibold text-gray-600">
-                        {requestStats.rejectedRequests}건
-                      </span>
-                    </div>
-                    <div className="pt-2 border-t">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">수락률</span>
-                        <span className="font-semibold text-gray-900">
-                          {requestStats.acceptanceRate}%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="pt-2 border-t text-xs text-gray-500">
-                      전체 요청 관리는 상담내역 페이지에서 확인하세요.
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
 
           {/* 빠른 액션 버튼 */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
@@ -569,7 +420,7 @@ export default function ExpertDashboardProfilePage() {
               </h3>
               <div className="space-y-3">
                 <button
-                  onClick={() => router.push("/dashboard/expert/consultations")}
+                  onClick={() => router.push("/dashboard/expert/consultation-requests")}
                   className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 >
                   전체 요청 관리
@@ -629,37 +480,68 @@ export default function ExpertDashboardProfilePage() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-semibold text-gray-900">
                   알림
+                  {unreadNotificationCount > 0 && (
+                    <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                      {unreadNotificationCount}
+                    </span>
+                  )}
                 </h3>
                 <button
-                  onClick={() => router.push('/dashboard/notifications')}
+                  onClick={() => router.push('/dashboard/expert/notifications')}
                   className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                 >
                   전체 보기
                 </button>
               </div>
               <div className="space-y-2 text-sm">
-                {requestStats && (
-                  <>
-                    {requestStats.pendingRequests > 0 && (
-                      <div className="flex items-center justify-between p-2 bg-orange-50 rounded">
-                        <span className="text-orange-700">새 상담 신청</span>
-                        <span className="font-semibold text-orange-800">
-                          {requestStats.pendingRequests}건
-                        </span>
+                {isLoadingNotifications ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    <span className="text-gray-600">알림 로딩 중...</span>
+                  </div>
+                ) : notifications.length > 0 ? (
+                  notifications.slice(0, 3).map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`p-2 rounded border-l-4 ${
+                        notification.type === 'consultation_request' ? 'bg-blue-50 border-blue-400' :
+                        notification.priority === 'high' ? 'bg-red-50 border-red-400' :
+                        'bg-gray-50 border-gray-400'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900 text-xs">
+                            {notification.title}
+                          </p>
+                          <p className="text-gray-600 text-xs mt-1 line-clamp-2">
+                            {notification.message}
+                          </p>
+                          <p className="text-gray-400 text-xs mt-1">
+                            {new Date(notification.createdAt).toLocaleString('ko-KR', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                        {!notification.isRead && (
+                          <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1"></div>
+                        )}
                       </div>
-                    )}
-                    {requestStats.urgentRequests > 0 && (
-                      <div className="flex items-center justify-between p-2 bg-red-50 rounded">
-                        <span className="text-red-700">긴급 요청</span>
-                        <span className="font-semibold text-red-800">
-                          {requestStats.urgentRequests}건
-                        </span>
-                      </div>
-                    )}
-                    {requestStats.pendingRequests === 0 && requestStats.urgentRequests === 0 && (
-                      <div className="text-gray-500">새로운 알림이 없습니다.</div>
-                    )}
-                  </>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-gray-500 text-center py-4">
+                    새로운 알림이 없습니다.
+                  </div>
+                )}
+
+                {notifications.length > 3 && (
+                  <div className="text-xs text-gray-400 text-center pt-2">
+                    +{notifications.length - 3}개 더 보기
+                  </div>
                 )}
               </div>
             </div>

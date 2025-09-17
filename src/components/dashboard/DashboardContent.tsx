@@ -389,17 +389,14 @@ export default function DashboardContent() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 헤더 */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                안녕하세요, {user.name}님!
-              </h1>
-              <p className="text-gray-600 mt-1">
-                오늘도 전문가와 함께 성장해보세요.
-              </p>
-            </div>
-            
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              안녕하세요, {user.name}님
+            </h1>
+            <p className="text-gray-600 mt-1">사용자 대시보드</p>
+          </div>
+          <div className="flex items-center space-x-3">
             {/* 새로고침 버튼 */}
             <button
               onClick={handleManualRefresh}
@@ -416,20 +413,47 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* 크레딧 잔액 및 AI상담 토큰 */}
-        <div className="mb-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 크레딧 잔액 */}
-            <div className="flex flex-col">
-              <CreditBalance 
-                credits={user.credits} 
-                userId={user.id} 
-              />
+        {/* 사용자 정보 카드 */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-blue-600 font-bold text-xl">
+                  {user.name?.charAt(0)}
+                </span>
+              </div>
+              <div className="ml-4">
+                <h2 className="text-xl font-bold text-blue-900">{user.name}</h2>
+                <div className="flex items-center mt-2 space-x-4 text-sm">
+                  <span className="bg-green-100 text-green-800 px-3 py-1 rounded flex items-center justify-center min-w-[80px] whitespace-nowrap">
+                    사용자
+                  </span>
+                  <span className="text-blue-600">
+                    상담 이용 가능
+                  </span>
+                </div>
+              </div>
             </div>
-            
-            {/* AI상담 토큰 */}
-            <div className="flex flex-col">
-              <div className="bg-white shadow rounded-lg p-6">
+            <div className="text-right">
+              <div className="text-sm text-blue-600 mb-2">이메일</div>
+              <div className="font-medium text-blue-900">{user.email}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* 크레딧 잔액, AI상담 토큰, 알림 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* 크레딧 잔액 */}
+          <div className="flex flex-col">
+            <CreditBalance
+              credits={user.credits}
+              userId={user.id}
+            />
+          </div>
+
+          {/* AI상담 토큰 */}
+          <div className="flex flex-col">
+            <div className="bg-white shadow rounded-lg p-6">
               {isLoading ? (
                 <div className="flex justify-center items-center h-32">
                   <RefreshCw className="h-8 w-8 text-blue-500 animate-spin" />
@@ -633,14 +657,90 @@ export default function DashboardContent() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+
+          {/* 알림 */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <svg className="h-6 w-6 text-orange-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900">알림</h3>
+              </div>
+              <span className="text-sm text-gray-500">최신순</span>
+            </div>
+
+            <div className="space-y-3">
+              {/* 알림 아이템들 */}
+              <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
+                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900">새로운 AI상담 기능이 추가되었습니다</p>
+                  <p className="text-xs text-blue-600 mt-1">더 정확한 상담을 위한 정밀 모드를 사용해보세요</p>
+                  <span className="text-xs text-blue-500">1시간 전</span>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
+                <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-900">이번 달 무료 토큰이 충전되었습니다</p>
+                  <p className="text-xs text-green-600 mt-1">50,000토큰을 무료로 사용하실 수 있습니다</p>
+                  <span className="text-xs text-green-500">2일 전</span>
+                </div>
+              </div>
+
+              <div className="text-center pt-2">
+                <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                  모든 알림 보기
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 프로필 섹션 */}
-        <div className="mb-8">
-          <UserProfile />
+        {/* 빠른 액션 섹션 */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            빠른 액션
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <button
+              onClick={() => window.location.href = '/experts'}
+              className="flex flex-col items-center p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors group"
+            >
+              <Users className="h-8 w-8 text-blue-600 mb-2 group-hover:scale-110 transition-transform" />
+              <span className="text-sm font-medium text-blue-900">전문가 찾기</span>
+            </button>
+
+            <button
+              onClick={() => window.location.href = '/chat'}
+              className="flex flex-col items-center p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors group"
+            >
+              <MessageCircle className="h-8 w-8 text-green-600 mb-2 group-hover:scale-110 transition-transform" />
+              <span className="text-sm font-medium text-green-900">AI 상담</span>
+            </button>
+
+            <button
+              onClick={() => window.location.href = '/expert-consultation'}
+              className="flex flex-col items-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors group"
+            >
+              <Video className="h-8 w-8 text-purple-600 mb-2 group-hover:scale-110 transition-transform" />
+              <span className="text-sm font-medium text-purple-900">전문가 상담</span>
+            </button>
+
+            <button
+              onClick={() => window.location.href = '/credit-packages'}
+              className="flex flex-col items-center p-4 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors group"
+            >
+              <Plus className="h-8 w-8 text-yellow-600 mb-2 group-hover:scale-110 transition-transform" />
+              <span className="text-sm font-medium text-yellow-900">크레딧 충전</span>
+            </button>
+          </div>
         </div>
 
         {/* 상담 일정 섹션 */}

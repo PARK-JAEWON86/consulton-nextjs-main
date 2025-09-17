@@ -80,6 +80,9 @@ function AnimatedNumber({ targetNumber, suffix, isVisible, duration = 2000 }: An
 
 export default function StatsSection() {
   const [isVisible, setIsVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [platformStats, setPlatformStats] = useState<PlatformStats>({
     totalUsers: 0,
     totalExperts: 0,
@@ -93,20 +96,61 @@ export default function StatsSection() {
     lastUpdated: new Date().toISOString()
   });
 
-  useEffect(() => {
-    // 컴포넌트 마운트 시 최신 통계 로드
-    const loadStats = async () => {
-      try {
-        const response = await fetch('/api/stats');
-        const result = await response.json();
-        if (result.success) {
-          setPlatformStats(result.data.stats);
-        }
-      } catch (error) {
-        console.error('통계 로드 실패:', error);
-      }
-    };
+  // 통계 데이터 로드 함수
+  const loadStats = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
+      const response = await fetch('/api/stats');
+
+      if (!response.ok) {
+        throw new Error(`통계 API 오류: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setPlatformStats(result.data.stats);
+        setRetryCount(0); // 성공 시 재시도 카운터 초기화
+      } else {
+        throw new Error(result.message || '통계 데이터를 불러올 수 없습니다.');
+      }
+    } catch (error) {
+      console.error('통계 로드 실패:', error);
+      const errorMessage = error instanceof Error ? error.message : '통계 데이터를 불러오는데 실패했습니다.';
+      setError(errorMessage);
+
+      // 기본 통계 데이터로 fallback
+      setPlatformStats({
+        totalUsers: 1000,
+        totalExperts: 250,
+        totalConsultations: 5000,
+        averageConsultationRating: 4.8,
+        averageMatchingTimeMinutes: 5,
+        monthlyActiveUsers: 800,
+        monthlyActiveExperts: 200,
+        consultationCompletionRate: 95,
+        userSatisfactionScore: 4.7,
+        lastUpdated: new Date().toISOString()
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 재시도 함수
+  const handleRetry = () => {
+    const maxRetries = 3;
+    if (retryCount >= maxRetries) {
+      setError(`최대 재시도 횟수(${maxRetries})를 초과했습니다.`);
+      return;
+    }
+    setRetryCount(prev => prev + 1);
+    loadStats();
+  };
+
+  useEffect(() => {
     loadStats();
   }, []);
 
@@ -174,43 +218,82 @@ export default function StatsSection() {
     },
   ];
 
+  // 스켈레톤 UI 컴포넌트
+  const SkeletonStat = ({ index }: { index: number }) => (
+    <div
+      className="text-center animate-pulse"
+      style={{ animationDelay: `${index * 150}ms` }}
+    >
+      <div className="mb-2">
+        <div className="h-10 md:h-12 bg-gray-200 rounded-lg mb-2 mx-auto w-20"></div>
+        <div className="h-6 bg-gray-200 rounded-lg mb-1 mx-auto w-24"></div>
+      </div>
+      <div className="h-4 bg-gray-200 rounded-lg mx-auto w-16"></div>
+    </div>
+  );
+
   return (
     <section
       id="stats-section"
       className="py-24 bg-white"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          {stats.map((stat, index) => (
-            <div
-              key={stat.id}
-              className={`text-center transform transition-all duration-700 ${
-                isVisible
-                  ? "translate-y-0 opacity-100"
-                  : "translate-y-10 opacity-0"
-              }`}
-              style={{
-                transitionDelay: `${index * 150}ms`,
-              }}
-            >
-              <div className="mb-2">
-                <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">
-                  <AnimatedNumber 
-                    targetNumber={stat.targetNumber}
-                    suffix={stat.suffix}
-                    isVisible={isVisible}
-                    duration={2000 + index * 200}
-                  />
-                </div>
-                <div className="text-lg font-semibold text-gray-700">
-                  {stat.label}
-                </div>
-              </div>
-              <div className="text-sm text-gray-600">
-                {stat.description}
-              </div>
+        {/* 에러 메시지 */}
+        {error && (
+          <div className="mb-6 text-center">
+            <div className="inline-flex items-center px-4 py-2 bg-red-50 border border-red-200 rounded-lg">
+              <span className="text-red-700 text-sm mr-3">{error}</span>
+              {retryCount < 3 && (
+                <button
+                  onClick={handleRetry}
+                  className="text-red-600 hover:text-red-800 text-sm font-medium underline"
+                >
+                  다시 시도
+                </button>
+              )}
             </div>
-          ))}
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          {isLoading ? (
+            // 로딩 시 스켈레톤 UI 표시
+            Array.from({ length: 4 }).map((_, index) => (
+              <SkeletonStat key={index} index={index} />
+            ))
+          ) : (
+            // 실제 데이터 표시
+            stats.map((stat, index) => (
+              <div
+                key={stat.id}
+                className={`text-center transform transition-all duration-700 ${
+                  isVisible
+                    ? "translate-y-0 opacity-100"
+                    : "translate-y-10 opacity-0"
+                }`}
+                style={{
+                  transitionDelay: `${index * 150}ms`,
+                }}
+              >
+                <div className="mb-2">
+                  <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">
+                    <AnimatedNumber
+                      targetNumber={stat.targetNumber}
+                      suffix={stat.suffix}
+                      isVisible={isVisible}
+                      duration={2000 + index * 200}
+                    />
+                  </div>
+                  <div className="text-lg font-semibold text-gray-700">
+                    {stat.label}
+                  </div>
+                </div>
+                <div className="text-sm text-gray-600">
+                  {stat.description}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </section>
