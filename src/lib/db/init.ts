@@ -14,10 +14,10 @@ export async function initializeDatabase() {
     console.log('✅ 데이터베이스 연결 성공');
 
     // 모든 모델 동기화 (개발 환경에서만)
-    // MySQL 키 제한 문제로 인해 sync 비활성화
+    // 외래키 제약조건 문제로 인해 sync 재비활성화
     // if (process.env.NODE_ENV === 'development') {
     //   console.log('🔄 모델 동기화 중...');
-    //   await sequelize.sync({ alter: true }); // 기존 테이블 구조 변경 시 사용
+    //   await sequelize.sync({ force: false }); // 테이블이 없을 때만 생성
     //   console.log('✅ 모델 동기화 완료');
     // }
 
