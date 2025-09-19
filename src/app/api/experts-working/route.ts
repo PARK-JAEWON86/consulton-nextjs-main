@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     console.error('Working experts API error:', error);
     return NextResponse.json({
       success: false,
-      error: error.message
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
     }, { status: 500 });
   }
 }

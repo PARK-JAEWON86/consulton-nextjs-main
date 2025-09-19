@@ -708,59 +708,6 @@ export default function HomePage() {
 
       // 존재하지 않는 API 대신 클라이언트 필터링 사용
       throw new Error('검색 API가 구현되지 않음 - 클라이언트 필터링 사용');
-
-      if (false) {
-        console.log('검색 API 응답:', result);
-
-        // API 응답을 UI에 맞는 형태로 변환
-        const convertedResults = result.data.experts.map((expert: any) => ({
-          id: parseInt(expert.id),
-          name: expert.fullName || expert.name,
-          specialty: expert.specialty,
-          experience: expert.experienceYears || expert.experience,
-          description: expert.bio || expert.description,
-          rating: expert.rating || 4.5,
-          reviewCount: expert.reviewCount || 0,
-          price: expert.hourlyRate ? `₩${expert.hourlyRate.toLocaleString()}` : '가격 문의',
-          image: expert.profileImage,
-          tags: expert.keywords || expert.tags || [],
-          availability: expert.availability || {},
-          isExactMatch: expert.isExactMatch || false, // 정확한 매칭인지 여부
-          matchScore: expert.matchScore || 0, // 매칭 점수
-          // 기존 필드들도 유지
-          education: [],
-          certifications: expert.certifications?.map((cert: any) => cert.name) || [],
-          specialties: expert.keywords || [],
-          specialtyAreas: expert.keywords || [],
-          consultationTypes: expert.consultationTypes || [],
-          languages: expert.languages || ['한국어'],
-          totalSessions: expert.totalSessions || 0,
-          avgRating: expert.rating || 4.5,
-          completionRate: 95,
-          repeatClients: expert.repeatClients || 0,
-          responseTime: expert.responseTime || '1시간 이내',
-          location: expert.location || '위치 미설정',
-          profileImage: expert.profileImage || null,
-          targetAudience: expert.targetAudience || ['성인'],
-          isOnline: true,
-          pricingTiers: expert.pricingTiers || [
-            { duration: 30, price: Math.round((expert.hourlyRate || 50000) * 0.5), description: '기본 상담' },
-            { duration: 60, price: expert.hourlyRate || 50000, description: '상세 상담' },
-            { duration: 90, price: Math.round((expert.hourlyRate || 50000) * 1.5), description: '종합 상담' }
-          ]
-        }));
-
-        setSearchResults(convertedResults);
-        setExactMatchCount(result.data.exactMatchCount || 0);
-
-        console.log('검색 완료:', {
-          totalResults: convertedResults.length,
-          exactMatches: result.data.exactMatchCount,
-          searchTime: result.data.searchTime
-        });
-      } else {
-        throw new Error(result.message || '검색에 실패했습니다.');
-      }
     } catch (error) {
       console.error('검색 실패:', error);
 

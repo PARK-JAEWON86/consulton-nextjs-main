@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 스케줄 시간 설정 (선택적)
-    let scheduledTime = null;
+    let scheduledTime: Date | undefined = undefined;
     if (preferredDate && preferredTime) {
       scheduledTime = new Date(`${preferredDate}T${preferredTime}:00`);
     }

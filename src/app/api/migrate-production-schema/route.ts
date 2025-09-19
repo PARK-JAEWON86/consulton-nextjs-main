@@ -60,21 +60,22 @@ export async function POST(request: NextRequest) {
 
       const rankingScore = calculateRankingScore(stats);
 
-      if (Math.abs(expert.rankingScore - rankingScore) > 0.1) {
-        await expert.update({
-          rankingScore,
-          ranking: Math.round(rankingScore * 100) // 0-10000 범위로 확장
-        });
-        updatedRankings++;
-      }
+      // TODO: rankingScore, ranking 필드가 Expert 모델에 추가되면 주석 해제
+      // if (Math.abs((expert as any).rankingScore || 0 - rankingScore) > 0.1) {
+      //   await expert.update({
+      //     rankingScore,
+      //     ranking: Math.round(rankingScore * 100) // 0-10000 범위로 확장
+      //   });
+      //   updatedRankings++;
+      // }
     }
 
     // 3. 전문가 레벨 재분류
     console.log('3. 전문가 레벨 재분류 중...');
-    const levelUpdates = [];
+    const levelUpdates: any[] = [];
 
     for (const expert of experts) {
-      const score = expert.rankingScore || 0;
+      const score = (expert as any).rankingScore || 0;
       let newLevel = 1;
 
       // 개선된 레벨 분류 시스템
@@ -90,15 +91,16 @@ export async function POST(request: NextRequest) {
       else if (score >= 50) newLevel = 2; // Emerging Talent (신진)
       else newLevel = 1; // Fresh Mind (신예)
 
-      if (expert.level !== newLevel) {
-        await expert.update({ level: newLevel });
-        levelUpdates.push({
-          expertId: expert.id,
-          oldLevel: expert.level,
-          newLevel,
-          score
-        });
-      }
+      // TODO: level 필드가 Expert 모델에 추가되면 주석 해제
+      // if ((expert as any).level !== newLevel) {
+      //   await expert.update({ level: newLevel });
+      //   levelUpdates.push({
+      //     expertId: expert.id,
+      //     oldLevel: (expert as any).level,
+      //     newLevel,
+      //     score
+      //   });
+      // }
     }
 
     // 4. 데이터 일관성 검증
@@ -170,7 +172,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: false,
       error: 'Migration failed',
-      details: error.message
+      details: error instanceof Error ? error.message : 'Unknown error occurred'
     }, { status: 500 });
   }
 }

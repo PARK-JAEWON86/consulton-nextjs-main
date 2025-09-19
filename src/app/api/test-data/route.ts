@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         ][i],
         consultationType: ['video', 'chat', 'voice'][i % 3],
         status: ['pending', 'scheduled', 'pending', 'completed', 'pending'][i],
-        scheduledTime: i % 2 === 0 ? new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000) : null,
+        scheduledTime: i % 2 === 0 ? new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000) : undefined,
         duration: 60,
         price: expert.hourlyRate || 50000,
         expertLevel: expert.experience || 1,

@@ -452,7 +452,7 @@ export default function ExpertProfilePage() {
       lastActiveAt: (updated as any).lastActiveAt || new Date(),
       joinedAt: (updated as any).joinedAt || new Date(),
       reschedulePolicy: (updated as any).reschedulePolicy || "12시간 전 일정 변경 가능",
-      pricingTiers: (updated as any).pricingTiers || (updated.hourlyRate ? [
+      pricingTiers: (updated as any).pricingTiers || (updated.hourlyRate && typeof updated.hourlyRate === 'number' ? [
         { duration: 30, price: Math.round(updated.hourlyRate * 0.5), description: "기본 상담" },
         { duration: 60, price: updated.hourlyRate, description: "상세 상담" },
         { duration: 90, price: Math.round(updated.hourlyRate * 1.5), description: "종합 상담" }

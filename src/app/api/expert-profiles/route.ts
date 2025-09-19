@@ -203,7 +203,7 @@ export async function GET(request: NextRequest) {
       consultationTypes: ['video', 'chat'],
       availability: {},
       certifications: [],
-      profileImage: null,
+      profileImage: undefined,
       status: 'approved' as const,
       createdAt: expert.createdAt.toISOString(),
       updatedAt: expert.updatedAt.toISOString(),

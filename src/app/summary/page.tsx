@@ -463,7 +463,7 @@ export default function SummaryPage() {
                         <div className="flex items-center justify-center">
                           <div className="px-3 py-1 bg-gray-100 rounded-lg">
                             <span className="text-sm font-semibold text-gray-600">
-                              {summary.consultationNumber || `CS${String(new Date(summary.date).getFullYear()).slice(-2)}${String(new Date(summary.date).getMonth() + 1).padStart(2, '0')}${String(new Date(summary.date).getDate()).padStart(2, '0')}${String(filteredSummaries.indexOf(summary) + 1).padStart(3, '0')}`}
+                              {summary.consultationNumber || (summary.date ? `CS${String(new Date(summary.date).getFullYear()).slice(-2)}${String(new Date(summary.date).getMonth() + 1).padStart(2, '0')}${String(new Date(summary.date).getDate()).padStart(2, '0')}${String(filteredSummaries.indexOf(summary) + 1).padStart(3, '0')}` : `CS${String(filteredSummaries.indexOf(summary) + 1).padStart(3, '0')}`)}
                             </span>
                           </div>
 

@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       consultationTypes: ['video', 'chat'],
       bio: '전문적인 상담을 제공합니다.',
       keywords: [expert.specialty],
-      level: expert.level || 1,
+      level: expert.experience || 1,
       isOnline: true,
       isProfileComplete: true
     }));
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     console.error('❌ 간단 전문가 API 오류:', error);
     return NextResponse.json({
       success: false,
-      error: error.message
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
     }, { status: 500 });
   }
 }

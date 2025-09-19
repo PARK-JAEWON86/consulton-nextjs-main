@@ -44,8 +44,12 @@ export type Availability = Record<WeekDay, { available: boolean; hours: string }
 export interface ConsultationSummary {
   id: number;
   consultationId: number; // 상담 ID (외래키)
+  consultationNumber?: string; // 상담 번호
   summaryTitle: string; // 요약 제목
   summaryContent: string; // 요약 내용
+  title?: string; // 제목
+  date?: Date; // 상담 날짜
+  tags?: string[]; // 태그
   keyPoints: string; // 핵심 포인트 (JSON 배열)
   actionItems: string; // 액션 아이템 (JSON 배열)
   recommendations: string; // 추천사항 (JSON 배열)
@@ -605,7 +609,9 @@ export interface ConsultationRequest {
   consultationType: ConsultationType;
   preferredDate?: Date;
   message?: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  notes?: string; // 추가 노트
+  status: 'pending' | 'accepted' | 'rejected' | 'expired' | 'scheduled' | 'cancelled' | 'completed';
+  budget?: number; // 예산 (가격)
   createdAt: Date;
   updatedAt: Date;
   expiresAt?: Date; // 신청 만료 시간 (예: 24시간 후)

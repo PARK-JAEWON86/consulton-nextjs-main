@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
         specialty: expert.specialty,
         pricePerMinute: expert.pricePerMinute,
         hourlyRate: expert.pricePerMinute * 60,
-        level: expert.level || 1
+        level: expert.experience || 1
       }))
     };
 
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     console.error('전문가 디버그 API 오류:', error);
     return NextResponse.json({
       success: false,
-      error: error.message
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
     }, { status: 500 });
   }
 }
